@@ -1,0 +1,61 @@
+
+syntax = "proto3";
+option go_package = "./;api";
+import "gogo.proto";
+
+package SC2APIProtocol;
+
+message AvailableAbility {
+int32 ability_id = 1 [(gogoproto.casttype) = "AbilityID"];
+bool requires_point = 2;
+}
+
+message ImageData {
+int32 bits_per_pixel = 1;
+Size2DI size = 2;
+bytes data = 3;
+}
+
+// Point on the screen/minimap (e.g., 0..64).
+// Note: bottom left of the screen is 0, 0.
+message PointI {
+int32 x = 1;
+int32 y = 2;
+}
+
+// Screen space rectangular area.
+message RectangleI {
+PointI p0 = 1;
+PointI p1 = 2;
+}
+
+// Point on the game board, 0..255.
+// Note: bottom left of the screen is 0, 0.
+message Point2D {
+float x = 1;
+float y = 2;
+}
+
+// Point on the game board, 0..255.
+// Note: bottom left of the screen is 0, 0.
+message Point {
+float x = 1;
+float y = 2;
+float z = 3;
+}
+
+// Screen dimensions.
+message Size2DI {
+int32 x = 1;
+int32 y = 2;
+}
+
+enum Race {
+NoRace = 0;
+Terran = 1;
+Zerg = 2;
+Protoss = 3;
+Random = 4;
+}
+
+

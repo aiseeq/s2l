@@ -1,0 +1,734 @@
+
+syntax = "proto3";
+option go_package = "./;api";
+import "gogo.proto";
+
+package SC2APIProtocol;
+
+import "common.proto";
+import "data.proto";
+import "debug.proto";
+import "error.proto";
+import "query.proto";
+import "raw.proto";
+import "score.proto";
+import "spatial.proto";
+import "ui.proto";
+
+//
+// Notes:
+//  Single player flow:
+//    1) Call Request.create_game with a valid single player map (a multiplayer map will end right away).
+//    2) Call Request.join_game, wait for the response.
+//    3) Request.end will terminate the game. Observations can still be made.
+//  Multi-player flow:
+//    1) Launch two game instances with separate ports.
+//    2) Designate a host, and Request.create_game with a multiplayer map.
+//    3) Call Request.join on BOTH clients. Join will block until both clients connect.
+//    4) Wait for a response from both clients. They can now play/step.
+//    5) Steps should be syncronized. One client may time out if they are not. Multiple step sizes are ok.
+//    4) Call Request.leave at any point or when the game ends. Observations will not be valid after this.
+//
+// States:
+//
+//------------------|---------------------------------------------------|-----------------------|
+//  Request         | Valid in State                                    | Transition to State   |
+//------------------|---------------------------------------------------|-----------------------|
+// create_game      | launched                                          | init_game             |
+//                  | ended (singleplayer only)                         | init_game             |
+// join_game*       | init_game (singleplayer or multiplayer host only) | in_game               |
+//                  | launched (multiplayer client only)                | in_game               |
+// restart_game     | ended                                             | in_game               |
+// start_replay     | launched                                          | in_replay             |
+//                  | ended (singleplayer only)                         |                       |
+// leave_game       | in_game (required when finishing multiplayer)     | launched              |
+// quick_save       | in_game                                           |                       |
+// quick_load       | in_game                                           |                       |
+//                  | ended                                             |                       |
+// quit             | any                                               | quit (not sent)       |
+// game_info        | in_game                                           |                       |
+//                  | in_replay                                         |                       |
+//                  | ended                                             |                       |
+// observation      | in_game                                           |                       |
+//                  | in_replay                                         |                       |
+//                  | ended                                             |                       |
+// step*            | in_game (not available in realtime mode)          | in_game               |
+//                  | in_replay                                         | ended                 |
+// action           | in_game (not available to observers)              |                       |
+// obs_action       | in_game (only for observers)                      |                       |
+//                  | in_replay                                         |                       |
+// data             | in_game                                           |                       |
+//                  | in_replay                                         |                       |
+//                  | ended                                             |                       |
+// query            | in_game                                           |                       |
+//                  | in_replay                                         |                       |
+//                  | ended                                             |                       |
+// save_replay      | in_game                                           |                       |
+//                  | ended (only after a game)                         |                       |
+// map_command      | in_game                                           |                       |
+// replay_info      | any                                               |                       |
+// available_maps   | any                                               |                       |
+// save_map         | any                                               |                       |
+// ping             | any                                               |                       |
+// debug            | in_game                                           | various               |
+//------------------|---------------------------------------------------|-----------------------|
+//
+// * In multiplayer, these require synchronization between clients.
+//
+// Notes:
+//      - if a request fails, the game remains in the current state.
+//
+
+//
+// Request/Response
+//
+
+message Request {
+oneof request {
+
+RequestCreateGame create_game = 1;
+RequestJoinGame join_game = 2;
+RequestRestartGame restart_game = 3;
+RequestStartReplay start_replay = 4;
+RequestLeaveGame leave_game = 5;
+
+RequestQuickSave quick_save = 6;
+RequestQuickLoad quick_load = 7;
+
+RequestQuit quit = 8;
+
+
+RequestGameInfo game_info = 9;
+RequestObservation observation = 10;
+RequestAction action = 11;
+RequestObserverAction obs_action = 21;
+RequestStep step = 12;
+RequestData data = 13;
+RequestQuery query = 14;
+RequestSaveReplay save_replay = 15;
+RequestMapCommand map_command = 22;
+
+
+RequestReplayInfo replay_info = 16;
+RequestAvailableMaps available_maps = 17;
+RequestSaveMap save_map = 18;
+
+
+RequestPing ping = 19;
+RequestDebug debug = 20;
+}
+uint32 id = 97;
+}
+
+message Response {
+oneof response {
+ResponseCreateGame create_game = 1;
+ResponseJoinGame join_game = 2;
+ResponseRestartGame restart_game = 3;
+ResponseStartReplay start_replay = 4;
+ResponseLeaveGame leave_game = 5;
+
+ResponseQuickSave quick_save = 6;
+ResponseQuickLoad quick_load = 7;
+
+ResponseQuit quit = 8;
+
+ResponseGameInfo game_info = 9;
+ResponseObservation observation = 10;
+ResponseAction action = 11;
+ResponseObserverAction obs_action = 21;
+ResponseStep step = 12;
+ResponseData data = 13;
+ResponseQuery query = 14;
+ResponseSaveReplay save_replay = 15;
+
+ResponseReplayInfo replay_info = 16;
+ResponseAvailableMaps available_maps = 17;
+ResponseSaveMap save_map = 18;
+ResponseMapCommand map_command = 22;
+
+
+ResponsePing ping = 19;
+ResponseDebug debug = 20;
+}
+uint32 id = 97;
+repeated string error = 98;
+Status status = 99;
+}
+
+enum Status {
+Status_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+launched = 1;
+init_game = 2;
+in_game = 3;
+in_replay = 4;
+ended = 5;
+quit = 6;
+unknown = 99;
+}
+
+//-----------------------------------------------------------------------------
+// If successful, puts the game into the status: init_game.
+// The next expected request should be RequestJoinGame. Can also quit (exit).
+message RequestCreateGame {
+oneof Map {
+LocalMap local_map = 1;
+string battlenet_map_name = 2;
+}
+
+repeated PlayerSetup player_setup = 3;
+
+bool disable_fog = 4;
+
+uint32 random_seed = 5;
+bool realtime = 6;
+}
+
+message LocalMap {
+
+
+
+string map_path = 1;
+bytes map_data = 7;
+}
+
+message ResponseCreateGame {
+enum Error {
+Error_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+MissingMap = 1;
+InvalidMapPath = 2;
+InvalidMapData = 3;
+InvalidMapName = 4;
+InvalidMapHandle = 5;
+MissingPlayerSetup = 6;
+InvalidPlayerSetup = 7;
+MultiplayerUnsupported = 8;
+}
+Error error = 1;
+string error_details = 2;
+}
+
+//-----------------------------------------------------------------------------
+// If successful, puts the game into the status: in_game. Will be able to
+// request actions, observations and step the game.
+message RequestJoinGame {
+oneof participation {
+Race race = 1;
+uint32 observed_player_id = 2 [(gogoproto.casttype) = "PlayerID"];
+}
+
+InterfaceOptions options = 3;
+PortSet server_ports = 4;
+repeated PortSet client_ports = 5;
+
+int32 shared_port = 6;
+string player_name = 7;
+string host_ip = 8;
+}
+
+message PortSet {
+int32 game_port = 1;
+int32 base_port = 2;
+}
+
+message ResponseJoinGame {
+uint32 player_id = 1 [(gogoproto.casttype) = "PlayerID"];
+
+enum Error {
+Error_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+MissingParticipation = 1;
+InvalidObservedPlayerId = 2;
+MissingOptions = 3;
+MissingPorts = 4;
+GameFull = 5;
+LaunchError = 6;
+
+
+FeatureUnsupported = 7;
+NoSpaceForUser = 8;
+MapDoesNotExist = 9;
+CannotOpenMap = 10;
+ChecksumError = 11;
+NetworkError = 12;
+OtherError = 13;
+}
+Error error = 2;
+string error_details = 3;
+}
+
+//-----------------------------------------------------------------------------
+message RequestRestartGame {
+}
+
+// The defaultRestartGameLoops is specified to be (1<<18) by default
+message ResponseRestartGame {
+enum Error {
+Error_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+LaunchError = 1;
+}
+Error error = 1;
+string error_details = 2;
+bool need_hard_reset = 3;
+}
+
+//-----------------------------------------------------------------------------
+message RequestStartReplay {
+oneof replay {
+string replay_path = 1;
+bytes replay_data = 5;
+}
+bytes map_data = 6;
+int32 observed_player_id = 2 [(gogoproto.casttype) = "PlayerID"];
+InterfaceOptions options = 3;
+
+bool disable_fog = 4;
+bool realtime = 7;
+bool record_replay = 8;
+}
+
+message ResponseStartReplay {
+enum Error {
+Error_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+MissingReplay = 1;
+InvalidReplayPath = 2;
+InvalidReplayData = 3;
+InvalidMapData = 4;
+InvalidObservedPlayerId = 5;
+MissingOptions = 6;
+LaunchError = 7;
+}
+Error error = 1;
+string error_details = 2;
+}
+
+//-----------------------------------------------------------------------------
+message RequestMapCommand {
+string trigger_cmd = 1;
+}
+
+message ResponseMapCommand {
+enum Error {
+Error_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+NoTriggerError = 1;
+}
+Error error = 1;
+string error_details = 2;
+}
+
+//-----------------------------------------------------------------------------
+message RequestLeaveGame {
+}
+
+message ResponseLeaveGame {
+}
+
+//-----------------------------------------------------------------------------
+message RequestQuickSave {
+}
+
+//-----------------------------------------------------------------------------
+message ResponseQuickSave {
+}
+
+//-----------------------------------------------------------------------------
+message RequestQuickLoad {
+}
+
+//-----------------------------------------------------------------------------
+message ResponseQuickLoad {
+}
+
+//-----------------------------------------------------------------------------
+message RequestQuit {
+}
+
+message ResponseQuit {
+}
+
+//-----------------------------------------------------------------------------
+message RequestGameInfo {
+}
+
+message ResponseGameInfo {
+string map_name = 1;
+repeated string mod_names = 6;
+string local_map_path = 2;
+repeated PlayerInfo player_info = 3;
+StartRaw start_raw = 4;
+InterfaceOptions options = 5;
+}
+
+//-----------------------------------------------------------------------------
+message RequestObservation {
+bool disable_fog = 1;
+uint32 game_loop = 2;
+}
+
+message ResponseObservation {
+repeated Action actions = 1;
+repeated ActionError action_errors = 2;
+Observation observation = 3;
+repeated PlayerResult player_result = 4;
+repeated ChatReceived chat = 5;
+}
+
+message ChatReceived {
+uint32 player_id = 1 [(gogoproto.casttype) = "PlayerID"];
+string message = 2;
+}
+
+//-----------------------------------------------------------------------------
+message RequestAction {
+repeated Action actions = 1;
+}
+
+message ResponseAction {
+repeated ActionResult result = 1;
+}
+
+//-----------------------------------------------------------------------------
+message RequestObserverAction {
+repeated ObserverAction actions = 1;
+}
+
+message ResponseObserverAction  {
+
+}
+
+//-----------------------------------------------------------------------------
+message RequestStep {
+uint32 count = 1;
+}
+
+message ResponseStep {
+
+
+
+
+uint32 simulation_loop = 1;
+}
+
+//-----------------------------------------------------------------------------
+message RequestData {
+bool ability_id = 1;
+bool unit_type_id = 2;
+bool upgrade_id = 3;
+bool buff_id = 4;
+bool effect_id = 5;
+}
+
+message ResponseData {
+repeated AbilityData abilities = 1;
+repeated UnitTypeData units = 2;
+repeated UpgradeData upgrades = 3;
+repeated BuffData buffs = 4;
+repeated EffectData effects = 5;
+}
+
+//-----------------------------------------------------------------------------
+message RequestSaveReplay {
+}
+
+message ResponseSaveReplay {
+bytes data = 1;
+}
+
+//-----------------------------------------------------------------------------
+message RequestReplayInfo {
+oneof replay {
+string replay_path = 1;
+bytes replay_data = 2;
+}
+bool download_data = 3;
+}
+
+message PlayerInfoExtra {
+PlayerInfo player_info = 1;
+PlayerResult player_result = 2;
+int32 player_mmr = 3;
+int32 player_apm = 4;
+}
+
+message ResponseReplayInfo {
+string map_name = 1;
+string local_map_path = 2;
+repeated PlayerInfoExtra player_info = 3;
+uint32 game_duration_loops = 4;
+float game_duration_seconds = 5;
+string game_version = 6;
+string data_version = 11;
+uint32 data_build = 7;
+uint32 base_build = 8;
+
+enum Error {
+Error_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+MissingReplay = 1;
+InvalidReplayPath = 2;
+InvalidReplayData = 3;
+ParsingError = 4;
+DownloadError = 5;
+}
+Error error = 9;
+string error_details = 10;
+}
+
+//-----------------------------------------------------------------------------
+message RequestAvailableMaps {
+}
+
+// This will only contain locally cached BattleNet maps.
+// To download all ladder maps, log in and queue into a ladder match.
+// To download any other map, play a custom game on that map.
+message ResponseAvailableMaps {
+repeated string local_map_paths = 1;
+repeated string battlenet_map_names = 2;
+}
+
+//-----------------------------------------------------------------------------
+// Copies map data into the path specified.
+message RequestSaveMap {
+string map_path = 1;
+bytes map_data = 2;
+}
+
+message ResponseSaveMap {
+enum Error {
+Error_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+InvalidMapData = 1;
+}
+Error error = 1;
+}
+
+//-----------------------------------------------------------------------------
+message RequestPing {
+}
+
+message ResponsePing {
+string game_version = 1;
+string data_version = 2;
+uint32 data_build = 3;
+uint32 base_build = 4;
+}
+
+//-----------------------------------------------------------------------------
+message RequestDebug {
+repeated DebugCommand debug = 1;
+}
+
+message ResponseDebug {
+}
+
+
+//
+// Game Setup
+//
+
+enum Difficulty {
+Difficulty_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+VeryEasy = 1;
+Easy = 2;
+Medium = 3;
+MediumHard = 4;
+Hard = 5;
+Harder = 6;
+VeryHard = 7;
+CheatVision = 8;
+CheatMoney = 9;
+CheatInsane = 10;
+}
+
+enum PlayerType {
+PlayerType_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+Participant = 1;
+Computer = 2;
+Observer = 3;
+}
+
+enum AIBuild {
+AIBuild_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+RandomBuild = 1;
+Rush = 2;
+Timing = 3;
+Power = 4;
+Macro = 5;
+Air = 6;
+}
+
+message PlayerSetup {
+PlayerType type = 1;
+
+
+Race race = 2;
+Difficulty difficulty = 3;
+string player_name = 4;
+AIBuild ai_build = 5;
+}
+
+message SpatialCameraSetup {
+Size2DI resolution = 2;
+Size2DI minimap_resolution = 3;
+
+
+float width = 1;
+bool crop_to_playable_area = 4;
+bool allow_cheating_layers = 5;
+}
+
+message InterfaceOptions {
+
+bool raw = 1;
+bool score = 2;
+SpatialCameraSetup feature_layer = 3;
+SpatialCameraSetup render = 4;
+bool show_cloaked = 5;
+bool show_burrowed_shadows = 9;
+bool show_placeholders = 8;
+
+
+
+
+
+
+bool raw_affects_selection = 6;
+
+
+
+bool raw_crop_to_playable_area = 7;
+}
+
+message PlayerInfo {
+
+
+uint32 player_id = 1 [(gogoproto.casttype) = "PlayerID"];
+PlayerType type = 2;
+Race race_requested = 3;
+Race race_actual = 4;
+Difficulty difficulty = 5;
+AIBuild ai_build = 7;
+string player_name = 6;
+}
+
+
+//
+// During Game
+//
+
+message PlayerCommon {
+uint32 player_id = 1 [(gogoproto.casttype) = "PlayerID"];
+uint32 minerals = 2;
+uint32 vespene = 3;
+uint32 food_cap = 4;
+uint32 food_used = 5;
+uint32 food_army = 6;
+uint32 food_workers = 7;
+uint32 idle_worker_count = 8;
+uint32 army_count = 9;
+uint32 warp_gate_count = 10;
+uint32 larva_count = 11;
+}
+
+message Observation {
+uint32 game_loop = 9;
+PlayerCommon player_common = 1;
+repeated Alert alerts = 10;
+repeated AvailableAbility abilities = 3;
+Score score = 4;
+
+ObservationRaw raw_data = 5;
+ObservationFeatureLayer feature_layer_data = 6;
+ObservationRender render_data = 7;
+ObservationUI ui_data = 8;
+}
+
+message Action {
+ActionRaw action_raw = 1;
+ActionSpatial action_feature_layer = 2;
+ActionSpatial action_render = 3;
+ActionUI action_ui = 4;
+ActionChat action_chat = 6;
+uint32 game_loop = 7;
+}
+
+message ActionChat {
+enum Channel {
+Channel_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+Broadcast = 1;
+Team = 2;
+}
+Channel channel = 1;
+string message = 2;
+}
+
+message ActionError {
+uint64 unit_tag = 1 [(gogoproto.casttype) = "UnitTag"];
+uint64 ability_id = 2 [(gogoproto.casttype) = "AbilityID"];
+ActionResult result = 3;
+}
+
+message ObserverAction {
+oneof action {
+ActionObserverPlayerPerspective player_perspective = 1;
+ActionObserverCameraMove camera_move = 2;
+ActionObserverCameraFollowPlayer camera_follow_player = 3;
+ActionObserverCameraFollowUnits camera_follow_units = 4;
+}
+}
+
+message ActionObserverPlayerPerspective {
+uint32 player_id = 1 [(gogoproto.casttype) = "PlayerID"];
+}
+
+message ActionObserverCameraMove {
+Point2D world_pos = 1;
+
+
+
+float distance = 2;
+}
+
+message ActionObserverCameraFollowPlayer {
+uint32 player_id = 1 [(gogoproto.casttype) = "PlayerID"];
+}
+
+message ActionObserverCameraFollowUnits {
+repeated uint64 unit_tags = 1 [(gogoproto.casttype) = "UnitTag"];
+}
+
+enum Alert {
+Alert_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+AlertError = 3;
+AddOnComplete = 4;
+BuildingComplete = 5;
+BuildingUnderAttack = 6;
+LarvaHatched = 7;
+MergeComplete = 8;
+MineralsExhausted = 9;
+MorphComplete = 10;
+MothershipComplete = 11;
+MULEExpired = 12;
+NuclearLaunchDetected = 1;
+NukeComplete = 13;
+NydusWormDetected = 2;
+ResearchComplete = 14;
+TrainError = 15;
+TrainUnitComplete = 16;
+TrainWorkerComplete = 17;
+TransformationComplete = 18;
+UnitUnderAttack = 19;
+UpgradeComplete = 20;
+VespeneExhausted = 21;
+WarpInComplete = 22;
+}
+
+enum Result {
+Result_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+Victory = 1;
+Defeat = 2;
+Tie = 3;
+Undecided = 4;
+}
+
+message PlayerResult {
+uint32 player_id = 1 [(gogoproto.casttype) = "PlayerID"];
+Result result = 2;
+}

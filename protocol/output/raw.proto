@@ -1,0 +1,207 @@
+
+syntax = "proto3";
+option go_package = "./;api";
+import "gogo.proto";
+
+package SC2APIProtocol;
+
+import "common.proto";
+
+//
+// Start
+//
+
+message StartRaw {
+Size2DI map_size = 1;
+ImageData pathing_grid = 2;
+ImageData terrain_height = 3;
+ImageData placement_grid = 4;
+RectangleI playable_area = 5;
+repeated Point2D start_locations = 6;
+}
+
+
+//
+// Observation
+//
+
+message ObservationRaw {
+PlayerRaw player = 1;
+repeated Unit units = 2;
+MapState map_state = 3;
+Event event = 4;
+repeated Effect effects = 5;
+repeated RadarRing radar = 6;
+}
+
+message RadarRing {
+Point pos = 1;
+float radius = 2;
+}
+
+message PowerSource {
+Point pos = 1;
+float radius = 2;
+uint64 tag = 3 [(gogoproto.casttype) = "UnitTag"];
+}
+
+message PlayerRaw {
+repeated PowerSource power_sources = 1;
+Point camera = 2;
+repeated uint32 upgrade_ids = 3 [(gogoproto.casttype) = "UpgradeID"];
+}
+
+message UnitOrder {
+uint32 ability_id = 1 [(gogoproto.casttype) = "AbilityID"];
+oneof target {
+Point target_world_space_pos = 2;
+uint64 target_unit_tag = 3 [(gogoproto.casttype) = "UnitTag"];
+}
+float progress = 4;
+}
+
+enum DisplayType {
+DisplayType_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+Visible = 1;
+Snapshot = 2;
+Hidden = 3;
+Placeholder = 4;
+}
+
+enum Alliance {
+Alliance_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+Self = 1;
+Ally = 2;
+Neutral = 3;
+Enemy = 4;
+}
+
+enum CloakState {
+CloakedUnknown = 0;
+Cloaked = 1;
+CloakedDetected = 2;
+NotCloaked = 3;
+CloakedAllied = 4;
+}
+
+message PassengerUnit {
+uint64 tag = 1 [(gogoproto.casttype) = "UnitTag"];
+float health = 2;
+float health_max = 3;
+float shield = 4;
+float shield_max = 7;
+float energy = 5;
+float energy_max = 8;
+uint32 unit_type = 6 [(gogoproto.casttype) = "UnitTypeID"];
+}
+
+message RallyTarget {
+Point point = 1;
+uint64 tag = 2;
+}
+
+message Unit {
+
+DisplayType display_type = 1;
+Alliance alliance = 2;
+
+uint64 tag = 3 [(gogoproto.casttype) = "UnitTag"];
+uint32 unit_type = 4 [(gogoproto.casttype) = "UnitTypeID"];
+int32 owner = 5 [(gogoproto.casttype) = "PlayerID"];
+
+Point pos = 6;
+float facing = 7;
+float radius = 8;
+float build_progress = 9;
+CloakState cloak = 10;
+repeated uint32 buff_ids = 27 [(gogoproto.casttype) = "BuffID"];
+
+float detect_range = 31;
+float radar_range = 32;
+
+bool is_selected = 11;
+bool is_on_screen = 12;
+bool is_blip = 13;
+bool is_powered = 35;
+bool is_active = 39;
+int32 attack_upgrade_level = 40;
+int32 armor_upgrade_level = 41;
+int32 shield_upgrade_level = 42;
+
+
+float health = 14;
+float health_max = 15;
+float shield = 16;
+float shield_max = 36;
+float energy = 17;
+float energy_max = 37;
+int32 mineral_contents = 18;
+int32 vespene_contents = 19;
+bool is_flying = 20;
+bool is_burrowed = 21;
+bool is_hallucination = 38;
+
+
+repeated UnitOrder orders = 22;
+uint64 add_on_tag = 23 [(gogoproto.casttype) = "UnitTag"];
+repeated PassengerUnit passengers = 24;
+int32 cargo_space_taken = 25;
+int32 cargo_space_max = 26;
+int32 assigned_harvesters = 28;
+int32 ideal_harvesters = 29;
+float weapon_cooldown = 30;
+uint64 engaged_target_tag = 34 [(gogoproto.casttype) = "UnitTag"];
+int32 buff_duration_remain = 43;
+int32 buff_duration_max = 44;
+repeated RallyTarget rally_targets = 45;
+repeated AvailableAbility actions = 100;
+}
+
+message MapState {
+ImageData visibility = 1;
+ImageData creep = 2;
+}
+
+message Event {
+repeated uint64 dead_units = 1 [(gogoproto.casttype) = "UnitTag"];
+}
+
+message Effect {
+uint32 effect_id = 1 [(gogoproto.casttype) = "EffectID"];
+repeated Point2D pos = 2;
+Alliance alliance = 3;
+int32 owner = 4;
+float radius = 5;
+}
+
+
+//
+// Action
+//
+
+message ActionRaw {
+oneof action {
+ActionRawUnitCommand unit_command = 1;
+ActionRawCameraMove camera_move = 2;
+ActionRawToggleAutocast toggle_autocast = 3;
+}
+}
+
+message ActionRawUnitCommand {
+int32 ability_id = 1 [(gogoproto.casttype) = "AbilityID"];
+oneof target {
+Point2D target_world_space_pos = 2;
+uint64 target_unit_tag = 3 [(gogoproto.casttype) = "UnitTag"];
+}
+repeated uint64 unit_tags = 4 [(gogoproto.casttype) = "UnitTag"];
+bool queue_command = 5;
+}
+
+message ActionRawCameraMove {
+Point center_world_space = 1;
+}
+
+message ActionRawToggleAutocast {
+int32 ability_id = 1 [(gogoproto.casttype) = "AbilityID"];
+repeated uint64 unit_tags = 2 [(gogoproto.casttype) = "UnitTag"];
+}

@@ -1,0 +1,125 @@
+
+syntax = "proto3";
+option go_package = "./;api";
+import "gogo.proto";
+
+package SC2APIProtocol;
+
+import "common.proto";
+
+// May not relevant: queueable (everything is queueable).
+// May not be important: AbilSetId - marine stim, marauder stim.
+// Stuff omitted: transient.
+// Stuff that may be important: cost, range, Alignment, targetfilters.
+message AbilityData {
+uint32 ability_id = 1 [(gogoproto.casttype) = "AbilityID"];
+string link_name = 2;
+uint32 link_index = 3;
+string button_name = 4;
+string friendly_name = 5;
+string hotkey = 6;
+uint32 remaps_to_ability_id = 7 [(gogoproto.casttype) = "AbilityID"];
+
+enum Target {
+Target_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+None = 1;
+Point = 2;
+Unit = 3;
+PointOrUnit = 4;
+PointOrNone = 5;
+}
+
+bool available = 8;
+Target target = 9;
+bool allow_minimap = 10;
+bool allow_autocast = 11;
+bool is_building = 12;
+float footprint_radius = 13;
+bool is_instant_placement = 14;
+float cast_range = 15;
+}
+
+enum Attribute {
+Attribute_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+Light = 1;
+Armored = 2;
+Biological = 3;
+Mechanical = 4;
+Robotic = 5;
+Psionic = 6;
+Massive = 7;
+Structure = 8;
+Hover = 9;
+Heroic = 10;
+Summoned = 11;
+}
+
+message DamageBonus {
+Attribute attribute = 1;
+float bonus = 2;
+}
+
+message Weapon {
+enum TargetType {
+TargetType_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+Ground = 1;
+Air = 2;
+Any = 3;
+}
+TargetType type = 1;
+float damage = 2;
+repeated DamageBonus damage_bonus = 3;
+uint32 attacks = 4;
+float range = 5;
+float speed = 6;
+}
+
+message UnitTypeData {
+uint32 unit_id = 1 [(gogoproto.casttype) = "UnitTypeID"];
+string name = 2;
+bool available = 3;
+uint32 cargo_size = 4;
+uint32 mineral_cost = 12;
+uint32 vespene_cost = 13;
+float food_required = 14;
+float food_provided = 18;
+uint32 ability_id = 15 [(gogoproto.casttype) = "AbilityID"];
+Race race = 16;
+float build_time = 17;
+bool has_vespene = 19;
+bool has_minerals = 20;
+float sight_range = 25;
+
+repeated uint32 tech_alias = 21 [(gogoproto.casttype) = "UnitTypeID"];
+uint32 unit_alias = 22 [(gogoproto.casttype) = "UnitTypeID"];
+
+uint32 tech_requirement = 23 [(gogoproto.casttype) = "UnitTypeID"];
+bool require_attached = 24;
+
+
+repeated Attribute attributes = 8;
+float movement_speed = 9;
+float armor = 10;
+repeated Weapon weapons = 11;
+}
+
+message UpgradeData {
+uint32 upgrade_id = 1 [(gogoproto.casttype) = "UpgradeID"];
+string name = 2;
+uint32 mineral_cost = 3;
+uint32 vespene_cost = 4;
+float research_time = 5;
+uint32 ability_id = 6 [(gogoproto.casttype) = "AbilityID"];
+}
+
+message BuffData {
+uint32 buff_id = 1 [(gogoproto.casttype) = "BuffID"];
+string name = 2;
+}
+
+message EffectData {
+uint32 effect_id = 1 [(gogoproto.casttype) = "EffectID"];
+string name = 2;
+string friendly_name = 3;
+float radius = 4;
+}

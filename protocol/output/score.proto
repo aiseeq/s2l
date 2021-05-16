@@ -1,0 +1,111 @@
+
+syntax = "proto3";
+option go_package = "./;api";
+import "gogo.proto";
+
+package SC2APIProtocol;
+
+message Score {
+enum ScoreType {
+ScoreType_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+Curriculum = 1;
+Melee = 2;
+}
+
+ScoreType score_type = 6;
+int32 score = 7;
+ScoreDetails score_details = 8;
+}
+
+message CategoryScoreDetails {
+float none = 1;
+float army = 2;
+float economy = 3;
+float technology = 4;
+float upgrade = 5;
+}
+
+message VitalScoreDetails {
+float life = 1;
+float shields = 2;
+float energy = 3;
+}
+
+message ScoreDetails {
+
+float idle_production_time = 1;
+
+float idle_worker_time = 2;
+
+
+float total_value_units = 3;
+
+float total_value_structures = 4;
+
+
+float killed_value_units = 5;
+
+float killed_value_structures = 6;
+
+
+float collected_minerals = 7;
+
+float collected_vespene = 8;
+
+
+float collection_rate_minerals = 9;
+
+float collection_rate_vespene = 10;
+
+
+float spent_minerals = 11;
+
+float spent_vespene = 12;
+
+
+
+
+
+
+
+
+
+CategoryScoreDetails food_used = 13;
+
+
+CategoryScoreDetails killed_minerals = 14;
+
+CategoryScoreDetails killed_vespene = 15;
+
+
+CategoryScoreDetails lost_minerals = 16;
+
+CategoryScoreDetails lost_vespene = 17;
+
+
+CategoryScoreDetails friendly_fire_minerals = 18;
+
+CategoryScoreDetails friendly_fire_vespene = 19;
+
+
+CategoryScoreDetails used_minerals = 20;
+
+CategoryScoreDetails used_vespene = 21;
+
+
+CategoryScoreDetails total_used_minerals = 22;
+
+CategoryScoreDetails total_used_vespene = 23;
+
+
+VitalScoreDetails total_damage_dealt = 24;
+
+VitalScoreDetails total_damage_taken = 25;
+
+VitalScoreDetails total_healed = 26;
+
+
+float current_apm = 27;
+
+float current_effective_apm = 28;
+}

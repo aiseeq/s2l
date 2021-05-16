@@ -1,0 +1,57 @@
+
+syntax = "proto3";
+option go_package = "./;api";
+import "gogo.proto";
+
+package SC2APIProtocol;
+
+import "common.proto";
+import "error.proto";
+
+message RequestQuery {
+repeated RequestQueryPathing pathing = 1;
+repeated RequestQueryAvailableAbilities abilities = 2;
+repeated RequestQueryBuildingPlacement placements = 3;
+bool ignore_resource_requirements = 4;
+}
+
+message ResponseQuery {
+repeated ResponseQueryPathing pathing = 1;
+repeated ResponseQueryAvailableAbilities abilities = 2;
+repeated ResponseQueryBuildingPlacement placements = 3;
+}
+
+//--------------------------------------------------------------------------------------------------
+message RequestQueryPathing {
+oneof start {
+Point2D start_pos = 1;
+uint64 unit_tag = 2 [(gogoproto.casttype) = "UnitTag"];
+}
+Point2D end_pos = 3;
+}
+
+message ResponseQueryPathing {
+float distance = 1;
+}
+
+//--------------------------------------------------------------------------------------------------
+message RequestQueryAvailableAbilities {
+uint64 unit_tag = 1 [(gogoproto.casttype) = "UnitTag"];
+}
+
+message ResponseQueryAvailableAbilities {
+repeated AvailableAbility abilities = 1;
+uint64 unit_tag = 2 [(gogoproto.casttype) = "UnitTag"];
+uint32 unit_type_id = 3 [(gogoproto.casttype) = "UnitTypeID"];
+}
+
+//--------------------------------------------------------------------------------------------------
+message RequestQueryBuildingPlacement {
+int32 ability_id = 1 [(gogoproto.casttype) = "AbilityID"];
+Point2D target_pos = 2;
+uint64 placing_unit_tag = 3 [(gogoproto.casttype) = "UnitTag"];
+}
+
+message ResponseQueryBuildingPlacement  {
+ActionResult result = 1;
+}

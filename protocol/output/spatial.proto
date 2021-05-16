@@ -1,0 +1,118 @@
+
+syntax = "proto3";
+option go_package = "./;api";
+import "gogo.proto";
+
+package SC2APIProtocol;
+
+import "common.proto";
+
+//
+// Observation - Feature Layer
+//
+
+message ObservationFeatureLayer {
+FeatureLayers renders = 1;
+FeatureLayersMinimap minimap_renders = 2;
+}
+
+message FeatureLayers {
+ImageData height_map = 1;
+ImageData visibility_map = 2;
+ImageData creep = 3;
+ImageData power = 4;
+ImageData player_id = 5;
+ImageData unit_type = 6;
+ImageData selected = 7;
+ImageData unit_hit_points = 8;
+ImageData unit_hit_points_ratio = 17;
+ImageData unit_energy = 9;
+ImageData unit_energy_ratio = 18;
+ImageData unit_shields = 10;
+ImageData unit_shields_ratio = 19;
+ImageData player_relative = 11;
+ImageData unit_density_aa = 14;
+ImageData unit_density = 15;
+ImageData effects = 20;
+ImageData hallucinations = 21;
+ImageData cloaked = 22;
+ImageData blip = 23;
+ImageData buffs = 24;
+ImageData buff_duration = 26;
+ImageData active = 25;
+ImageData build_progress = 27;
+ImageData buildable = 28;
+ImageData pathable = 29;
+ImageData placeholder = 30;
+}
+
+message FeatureLayersMinimap {
+ImageData height_map = 1;
+ImageData visibility_map = 2;
+ImageData creep = 3;
+ImageData camera = 4;
+ImageData player_id = 5;
+ImageData player_relative = 6;
+ImageData selected = 7;
+ImageData alerts = 9;
+ImageData buildable = 10;
+ImageData pathable = 11;
+
+
+ImageData unit_type = 8;
+}
+
+
+//
+// Observation - Rendered
+//
+
+message ObservationRender {
+ImageData map = 1;
+ImageData minimap = 2;
+}
+
+
+//
+// Action
+//
+
+message ActionSpatial {
+oneof action {
+ActionSpatialUnitCommand unit_command = 1;
+ActionSpatialCameraMove camera_move = 2;
+ActionSpatialUnitSelectionPoint unit_selection_point = 3;
+ActionSpatialUnitSelectionRect unit_selection_rect = 4;
+}
+}
+
+message ActionSpatialUnitCommand {
+int32 ability_id = 1;
+oneof target {
+PointI target_screen_coord = 2;
+PointI target_minimap_coord = 3;
+}
+
+bool queue_command = 4;
+}
+
+message ActionSpatialCameraMove {
+PointI center_minimap = 1;
+}
+
+message ActionSpatialUnitSelectionPoint {
+PointI selection_screen_coord = 1;
+enum Type {
+Type_nil = 0 [(gogoproto.enumvalue_customname) = "nil"];
+Select = 1;
+Toggle = 2;
+AllType = 3;
+AddAllType = 4;
+}
+Type type = 2;
+}
+
+message ActionSpatialUnitSelectionRect {
+repeated RectangleI selection_screen_coord = 1;
+bool selection_add = 2;
+}
