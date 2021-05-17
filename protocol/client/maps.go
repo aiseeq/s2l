@@ -7,6 +7,16 @@ import (
 	"time"
 )
 
+var Maps2021season1 = []string{
+	"DeathAura506",
+	"EternalEmpire506",
+	"EverDream506",
+	"GoldenWall506",
+	"IceandChrome506",
+	"PillarsofGold506",
+	"Submarine506",
+}
+
 // SetMap sets the map to use (via flag)
 func SetMap(name string) {
 	Set("Map", name)

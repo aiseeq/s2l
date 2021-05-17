@@ -4,8 +4,8 @@ import (
 	"github.com/aiseeq/s2l/protocol/api"
 )
 
-func (c *Connection) CreateGame(createGame api.RequestCreateGame) (*api.ResponseCreateGame, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) CreateGame(createGame api.RequestCreateGame) (*api.ResponseCreateGame, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_CreateGame{
 			CreateGame: &createGame,
 		},
@@ -16,8 +16,8 @@ func (c *Connection) CreateGame(createGame api.RequestCreateGame) (*api.Response
 	return nil, err
 }
 
-func (c *Connection) JoinGame(joinGame api.RequestJoinGame) (*api.ResponseJoinGame, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) JoinGame(joinGame api.RequestJoinGame) (*api.ResponseJoinGame, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_JoinGame{
 			JoinGame: &joinGame,
 		},
@@ -28,8 +28,8 @@ func (c *Connection) JoinGame(joinGame api.RequestJoinGame) (*api.ResponseJoinGa
 	return nil, err
 }
 
-func (c *Connection) RestartGame() (*api.ResponseRestartGame, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) RestartGame() (*api.ResponseRestartGame, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_RestartGame{
 			RestartGame: &api.RequestRestartGame{},
 		},
@@ -40,8 +40,8 @@ func (c *Connection) RestartGame() (*api.ResponseRestartGame, error) {
 	return nil, err
 }
 
-func (c *Connection) StartReplay(startReplay api.RequestStartReplay) (*api.ResponseStartReplay, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) StartReplay(startReplay api.RequestStartReplay) (*api.ResponseStartReplay, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_StartReplay{
 			StartReplay: &startReplay,
 		},
@@ -52,8 +52,8 @@ func (c *Connection) StartReplay(startReplay api.RequestStartReplay) (*api.Respo
 	return nil, err
 }
 
-func (c *Connection) LeaveGame() error {
-	_, err := c.request(&api.Request{
+func (c *Client) LeaveGame() error {
+	_, err := c.Request(&api.Request{
 		Request: &api.Request_LeaveGame{
 			LeaveGame: &api.RequestLeaveGame{},
 		},
@@ -61,8 +61,8 @@ func (c *Connection) LeaveGame() error {
 	return err
 }
 
-func (c *Connection) QuickSave() error {
-	_, err := c.request(&api.Request{
+func (c *Client) QuickSave() error {
+	_, err := c.Request(&api.Request{
 		Request: &api.Request_QuickSave{
 			QuickSave: &api.RequestQuickSave{},
 		},
@@ -70,8 +70,8 @@ func (c *Connection) QuickSave() error {
 	return err
 }
 
-func (c *Connection) QuickLoad() error {
-	_, err := c.request(&api.Request{
+func (c *Client) QuickLoad() error {
+	_, err := c.Request(&api.Request{
 		Request: &api.Request_QuickLoad{
 			QuickLoad: &api.RequestQuickLoad{},
 		},
@@ -79,8 +79,8 @@ func (c *Connection) QuickLoad() error {
 	return err
 }
 
-func (c *Connection) Quit() error {
-	_, err := c.request(&api.Request{
+func (c *Client) Quit() error {
+	_, err := c.Request(&api.Request{
 		Request: &api.Request_Quit{
 			Quit: &api.RequestQuit{},
 		},
@@ -88,8 +88,8 @@ func (c *Connection) Quit() error {
 	return err
 }
 
-func (c *Connection) GameInfo() (*api.ResponseGameInfo, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) GameInfo() (*api.ResponseGameInfo, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_GameInfo{
 			GameInfo: &api.RequestGameInfo{},
 		},
@@ -100,8 +100,8 @@ func (c *Connection) GameInfo() (*api.ResponseGameInfo, error) {
 	return nil, err
 }
 
-func (c *Connection) Observation(observation api.RequestObservation) (*api.ResponseObservation, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) Observation(observation api.RequestObservation) (*api.ResponseObservation, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_Observation{
 			Observation: &observation,
 		},
@@ -112,8 +112,8 @@ func (c *Connection) Observation(observation api.RequestObservation) (*api.Respo
 	return nil, err
 }
 
-func (c *Connection) Action(action api.RequestAction) (*api.ResponseAction, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) Action(action api.RequestAction) (*api.ResponseAction, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_Action{
 			Action: &action,
 		},
@@ -124,8 +124,8 @@ func (c *Connection) Action(action api.RequestAction) (*api.ResponseAction, erro
 	return nil, err
 }
 
-func (c *Connection) ObsAction(obsAction api.RequestObserverAction) error {
-	_, err := c.request(&api.Request{
+func (c *Client) ObsAction(obsAction api.RequestObserverAction) error {
+	_, err := c.Request(&api.Request{
 		Request: &api.Request_ObsAction{
 			ObsAction: &obsAction,
 		},
@@ -133,8 +133,8 @@ func (c *Connection) ObsAction(obsAction api.RequestObserverAction) error {
 	return err
 }
 
-func (c *Connection) Step(step api.RequestStep) (*api.ResponseStep, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) Step(step api.RequestStep) (*api.ResponseStep, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_Step{
 			Step: &step,
 		},
@@ -145,8 +145,8 @@ func (c *Connection) Step(step api.RequestStep) (*api.ResponseStep, error) {
 	return nil, err
 }
 
-func (c *Connection) Data(data api.RequestData) (*api.ResponseData, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) Data(data api.RequestData) (*api.ResponseData, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_Data{
 			Data: &data,
 		},
@@ -157,8 +157,8 @@ func (c *Connection) Data(data api.RequestData) (*api.ResponseData, error) {
 	return nil, err
 }
 
-func (c *Connection) Query(query api.RequestQuery) (*api.ResponseQuery, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) Query(query api.RequestQuery) (*api.ResponseQuery, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_Query{
 			Query: &query,
 		},
@@ -169,8 +169,8 @@ func (c *Connection) Query(query api.RequestQuery) (*api.ResponseQuery, error) {
 	return nil, err
 }
 
-func (c *Connection) SaveReplay() (*api.ResponseSaveReplay, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) SaveReplay() (*api.ResponseSaveReplay, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_SaveReplay{
 			SaveReplay: &api.RequestSaveReplay{},
 		},
@@ -181,8 +181,8 @@ func (c *Connection) SaveReplay() (*api.ResponseSaveReplay, error) {
 	return nil, err
 }
 
-func (c *Connection) MapCommand(mapCommand api.RequestMapCommand) (*api.ResponseMapCommand, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) MapCommand(mapCommand api.RequestMapCommand) (*api.ResponseMapCommand, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_MapCommand{
 			MapCommand: &mapCommand,
 		},
@@ -193,8 +193,8 @@ func (c *Connection) MapCommand(mapCommand api.RequestMapCommand) (*api.Response
 	return nil, err
 }
 
-func (c *Connection) ReplayInfo(replayInfo api.RequestReplayInfo) (*api.ResponseReplayInfo, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) ReplayInfo(replayInfo api.RequestReplayInfo) (*api.ResponseReplayInfo, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_ReplayInfo{
 			ReplayInfo: &replayInfo,
 		},
@@ -205,8 +205,8 @@ func (c *Connection) ReplayInfo(replayInfo api.RequestReplayInfo) (*api.Response
 	return nil, err
 }
 
-func (c *Connection) AvailableMaps() (*api.ResponseAvailableMaps, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) AvailableMaps() (*api.ResponseAvailableMaps, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_AvailableMaps{
 			AvailableMaps: &api.RequestAvailableMaps{},
 		},
@@ -217,8 +217,8 @@ func (c *Connection) AvailableMaps() (*api.ResponseAvailableMaps, error) {
 	return nil, err
 }
 
-func (c *Connection) SaveMap(saveMap api.RequestSaveMap) (*api.ResponseSaveMap, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) SaveMap(saveMap api.RequestSaveMap) (*api.ResponseSaveMap, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_SaveMap{
 			SaveMap: &saveMap,
 		},
@@ -229,8 +229,8 @@ func (c *Connection) SaveMap(saveMap api.RequestSaveMap) (*api.ResponseSaveMap, 
 	return nil, err
 }
 
-func (c *Connection) Ping() (*api.ResponsePing, error) {
-	r, err := c.request(&api.Request{
+func (c *Client) Ping() (*api.ResponsePing, error) {
+	r, err := c.Request(&api.Request{
 		Request: &api.Request_Ping{
 			Ping: &api.RequestPing{},
 		},
@@ -241,8 +241,8 @@ func (c *Connection) Ping() (*api.ResponsePing, error) {
 	return nil, err
 }
 
-func (c *Connection) Debug(debug api.RequestDebug) error {
-	_, err := c.request(&api.Request{
+func (c *Client) Debug(debug api.RequestDebug) error {
+	_, err := c.Request(&api.Request{
 		Request: &api.Request_Debug{
 			Debug: &debug,
 		},

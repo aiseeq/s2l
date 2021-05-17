@@ -8,43 +8,15 @@ import (
 	"github.com/aiseeq/s2l/protocol/api"
 )
 
-// Client ...
 type Client struct {
-	Connection
-	realtime bool
+	api.ResponsePing
 
-	playerID    api.PlayerID
-	gameInfo    *api.ResponseGameInfo
-	replayInfo  *api.ResponseReplayInfo
-	data        *api.ResponseData
-	observation *api.ResponseObservation
-	upgrades    map[api.UpgradeID]struct{}
-	newUpgrades []api.UpgradeID
+	Status api.Status
 
-	beforeStep []func()
-	subStep    []func()
-	afterStep  []func()
-
-	debugDraw chan struct{}
-
-	perfInterval uint32
-	lastDraw     []*api.DebugCommand
-
-	perfStart       time.Time
-	perfStartFrame  uint32
-	beforeStepTime  time.Duration
-	stepTime        time.Duration
-	observationTime time.Duration
-	afterStepTime   time.Duration
-
-	actions          int
-	maxActions       int
-	actionsCompleted int
-	observerActions  int
-	debugCommands    int
+	counter  uint32
+	requests chan<- request
 }
 
-// Connect ...
 func (c *Client) Connect(address string, port int, timeout time.Duration) error {
 	attempts := int(timeout.Seconds() + 1.5)
 	if attempts < 1 {
@@ -53,14 +25,14 @@ func (c *Client) Connect(address string, port int, timeout time.Duration) error 
 
 	connected := false
 	for i := 0; i < attempts; i++ {
-		if err := c.Connection.Connect(address, port); err == nil {
+		if err := c.Dial(address, port); err == nil {
 			connected = true
 			break
 		}
 		time.Sleep(time.Second)
 
 		if i == 0 {
-			fmt.Print("Waiting for connection")
+			log.Info("Waiting for connection")
 		} else {
 			fmt.Print(".")
 		}
@@ -75,9 +47,8 @@ func (c *Client) Connect(address string, port int, timeout time.Duration) error 
 	return nil
 }
 
-// TryConnect ...
 func (c *Client) TryConnect(address string, port int) error {
-	if err := c.Connection.Connect(address, port); err != nil {
+	if err := c.Dial(address, port); err != nil {
 		return err
 	}
 
@@ -85,9 +56,8 @@ func (c *Client) TryConnect(address string, port int) error {
 	return nil
 }
 
-// CreateGame ...
-func (c *Client) CreateGame(mapPath string, players []*api.PlayerSetup, realtime bool) error {
-	r, err := c.Connection.CreateGame(api.RequestCreateGame{
+func (c *Client) RequestCreateGame(mapPath string, players []*api.PlayerSetup, realtime bool) error {
+	r, err := c.CreateGame(api.RequestCreateGame{
 		Map: &api.RequestCreateGame_LocalMap{
 			LocalMap: &api.LocalMap{
 				MapPath: mapPath,
@@ -99,7 +69,6 @@ func (c *Client) CreateGame(mapPath string, players []*api.PlayerSetup, realtime
 	if err != nil {
 		return err
 	}
-	c.realtime = realtime
 
 	if r.Error != api.ResponseCreateGame_nil {
 		return fmt.Errorf("%v: %v", r.Error, r.GetErrorDetails())
@@ -108,7 +77,6 @@ func (c *Client) CreateGame(mapPath string, players []*api.PlayerSetup, realtime
 	return nil
 }
 
-// RequestJoinGame ...
 func (c *Client) RequestJoinGame(setup *api.PlayerSetup, options *api.InterfaceOptions, ports Ports) error {
 	req := api.RequestJoinGame{
 		Participation: &api.RequestJoinGame_Race{
@@ -121,7 +89,7 @@ func (c *Client) RequestJoinGame(setup *api.PlayerSetup, options *api.InterfaceO
 		req.ServerPorts = ports.ServerPorts
 		req.ClientPorts = ports.ClientPorts
 	}
-	r, err := c.Connection.JoinGame(req)
+	r, err := c.JoinGame(req)
 	if err != nil {
 		return err
 	}
@@ -130,6 +98,6 @@ func (c *Client) RequestJoinGame(setup *api.PlayerSetup, options *api.InterfaceO
 		return fmt.Errorf("%v: %v", r.Error.String(), r.GetErrorDetails())
 	}
 
-	c.playerID = r.GetPlayerId()
+	// c.playerID = r.GetPlayerId()
 	return nil
 }

@@ -10,28 +10,20 @@ type ProcessInfo struct {
 	Port int
 }
 
-type PlayerSetup struct {
-	*api.PlayerSetup
-}
-
-func NewParticipant(race api.Race, name string) PlayerSetup {
-	return PlayerSetup{
-		PlayerSetup: &api.PlayerSetup{
-			Type:       api.PlayerType_Participant,
-			Race:       race,
-			PlayerName: name,
-		},
+func NewParticipant(race api.Race, name string) *api.PlayerSetup {
+	return &api.PlayerSetup{
+		Type:       api.PlayerType_Participant,
+		Race:       race,
+		PlayerName: name,
 	}
 }
 
-func NewComputer(race api.Race, difficulty api.Difficulty, build api.AIBuild) PlayerSetup {
-	return PlayerSetup{
-		PlayerSetup: &api.PlayerSetup{
-			Type:       api.PlayerType_Computer,
-			Race:       race,
-			Difficulty: difficulty,
-			AiBuild:    build,
-		},
+func NewComputer(race api.Race, difficulty api.Difficulty, build api.AIBuild) *api.PlayerSetup {
+	return &api.PlayerSetup{
+		Type:       api.PlayerType_Computer,
+		Race:       race,
+		Difficulty: difficulty,
+		AiBuild:    build,
 	}
 }
 

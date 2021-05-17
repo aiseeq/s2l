@@ -1,9 +1,9 @@
 package client
 
 import (
+	log "bitbucket.org/aisee/minilog"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"os/user"
@@ -25,9 +25,6 @@ var (
 		ShowCloaked:         true,
 		ShowPlaceholders:    true, // !!! ??? Building that hasn't started construction?
 		RawAffectsSelection: true, // !!! Check if it's ok
-		// FeatureLayer: &api.SpatialCameraSetup{
-		// 	Resolution: &api.Size2DI{X: 512, Y: 512},
-		// },
 	}
 	processRealtime          = false
 	processConnectTimeout, _ = time.ParseDuration("2m")
@@ -60,74 +57,6 @@ func SetInterfaceOptions(options *api.InterfaceOptions) {
 	processInterfaceOptions = options
 }
 
-func defaultExecutable() string {
-	path := ""
-
-	// Default to the environment variable (Linux mostly)
-	if sc2path := os.Getenv("SC2PATH"); len(sc2path) > 0 {
-		log.Printf("SC2PATH: %v", sc2path)
-		path = filepath.Join(sc2path, "Versions", "dummy")
-	}
-
-	// Read value from ExecuteInfo.txt if the current user has run the game before
-	file, err := getUserDirectory()
-	if err != nil {
-		log.Printf("Error getting user directory: %v", err)
-	} else if len(file) > 0 {
-		file = filepath.Join(file, "Starcraft II", "ExecuteInfo.txt")
-		log.Printf("ExecuteInfo path: %v", file)
-	}
-
-	if props, err := newPropertyReader(file); err == nil {
-		props.getString("executable", &path)
-		log.Printf("  executable = %v", path)
-	} else {
-		log.Printf("Error reading `executable`: %v", err)
-	}
-
-	// Backout the defaulted path to the Versions directory and then find the latest Base game
-	if pp := sc2Path(path); pp != "" {
-		// Find the highest version folder where the exe exists
-		pp = filepath.Join(pp, "Versions")
-		subdirs := getSubdirs(pp)
-		for i := len(subdirs) - 1; i >= 0; i-- {
-			p := filepath.Join(pp, subdirs[i], getBinPath())
-			if _, err := os.Stat(p); err == nil {
-				path = p
-				break
-			}
-		}
-	}
-	return path
-}
-
-func hasProcessPath() bool {
-	if len(processPath) == 0 {
-		return false
-	}
-	return true
-}
-
-func processPathForBuild(build uint32) string {
-	path := processPath
-	if build != 0 {
-		// Get the exe name and then back out to the Versions directory
-		_, exe := filepath.Split(path)
-		root := sc2Path(path)
-		if root == "" {
-			log.Printf("Can't find game dir: %v", path)
-		}
-		dir := filepath.Join(sc2Path(path), "Versions")
-
-		// Get the path of the correct version and make sure the exe exists
-		path = filepath.Join(dir, fmt.Sprintf("Base%v", build), exe)
-		if _, err := os.Stat(path); err != nil {
-			log.Printf("Base version not found: %v", err)
-		}
-	}
-	return path
-}
-
 func getUserDirectory() (string, error) {
 	switch runtime.GOOS {
 	case "windows":
@@ -137,7 +66,7 @@ func getUserDirectory() (string, error) {
 
 		sout := strings.TrimSpace(string(out))
 		if err != nil {
-			log.Print("Documents directory lookup failed: ", sout)
+			log.Error("Documents directory lookup failed: ", sout)
 			return "", err
 		}
 
@@ -149,7 +78,7 @@ func getUserDirectory() (string, error) {
 	case "darwin":
 		u, err := user.Current()
 		if err != nil {
-			log.Print("Failed to get current user:", err)
+			log.Error("Failed to get current user:", err)
 			return "", err
 		}
 		return filepath.Join(u.HomeDir, "Library", "Application Support", "Blizzard"), nil
@@ -163,10 +92,6 @@ func getUserDirectory() (string, error) {
 	}
 }
 
-func defaultSc2Path() string {
-	return sc2Path(processPath)
-}
-
 func sc2Path(path string) string {
 	for {
 		prev := path
@@ -178,6 +103,10 @@ func sc2Path(path string) string {
 			return ""
 		}
 	}
+}
+
+func defaultSc2Path() string {
+	return sc2Path(processPath)
 }
 
 func getSubdirs(dir string) []string {
@@ -201,4 +130,45 @@ func getBinPath() string {
 	default:
 		return "SC2_x64"
 	}
+}
+
+func defaultExecutable() string {
+	path := ""
+
+	// Default to the environment variable (Linux mostly)
+	if sc2path := os.Getenv("SC2PATH"); len(sc2path) > 0 {
+		log.Infof("SC2PATH: %v", sc2path)
+		path = filepath.Join(sc2path, "Versions", "dummy")
+	}
+
+	// Read value from ExecuteInfo.txt if the current user has run the game before
+	file, err := getUserDirectory()
+	if err != nil {
+		log.Errorf("Error getting user directory: %v", err)
+	} else if len(file) > 0 {
+		file = filepath.Join(file, "Starcraft II", "ExecuteInfo.txt")
+		log.Infof("ExecuteInfo path: %v", file)
+	}
+
+	if props, err := newPropertyReader(file); err == nil {
+		props.getString("executable", &path)
+		log.Infof("Executable = %v", path)
+	} else {
+		log.Errorf("Error reading `executable`: %v", err)
+	}
+
+	// Backout the defaulted path to the Versions directory and then find the latest Base game
+	if pp := sc2Path(path); pp != "" {
+		// Find the highest version folder where the exe exists
+		pp = filepath.Join(pp, "Versions")
+		subdirs := getSubdirs(pp)
+		for i := len(subdirs) - 1; i >= 0; i-- {
+			p := filepath.Join(pp, subdirs[i], getBinPath())
+			if _, err := os.Stat(p); err == nil {
+				path = p
+				break
+			}
+		}
+	}
+	return path
 }

@@ -3,7 +3,6 @@ package client
 import (
 	"bufio"
 	"os"
-	"strconv"
 	"strings"
 	"unicode"
 )
@@ -36,22 +35,6 @@ func newPropertyReader(filePath string) (propertyReader, error) {
 	}
 
 	return props, nil
-}
-
-func (pr propertyReader) getInt(key string, value *int) bool {
-	if str, ok := pr[key]; ok {
-		*value, _ = strconv.Atoi(str)
-		return true
-	}
-	return false
-}
-
-func (pr propertyReader) getFloat(key string, value *float64) bool {
-	if str, ok := pr[key]; ok {
-		*value, _ = strconv.ParseFloat(str, 64)
-		return true
-	}
-	return false
 }
 
 func (pr propertyReader) getString(key string, value *string) bool {

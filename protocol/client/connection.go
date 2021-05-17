@@ -4,6 +4,7 @@ import (
 	log "bitbucket.org/aisee/minilog"
 	"errors"
 	"fmt"
+	"github.com/aiseeq/s2l/helpers"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -12,15 +13,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
-
-type Connection struct {
-	api.ResponsePing
-
-	Status api.Status
-
-	counter  uint32
-	requests chan<- request
-}
 
 type request struct {
 	data     []byte
@@ -36,12 +28,21 @@ type response struct {
 // The gorilla/websocket implementation fragments messages above it's write buffer size and the
 // SC2 game doesn't seem to be able to deal with these messages. There is not a check in place
 // to prevent large messages from being sent and warnings will be printed if a message size
-// exceeds half of this limit. The default is now 2MB (up from 4kb) but can be overrided by
+// exceeds half of this limit. The default is now 10MB (up from 4kb) but can be overrided by
 // modifying this value before connecting to SC2.
-var MaxMessageSize = 2 * 1024 * 1024
+var MaxMessageSize = 10 * 1024 * 1024
 
-// Connect ...
-func (c *Connection) Connect(address string, port int) error {
+func (r request) process(ws *websocket.Conn) {
+	data, err := []byte(nil), ws.WriteMessage(websocket.BinaryMessage, r.data)
+	if err == nil {
+		_, data, err = ws.ReadMessage()
+	}
+
+	r.response <- response{data, err}
+	close(r.response)
+}
+
+func (c *Client) Dial(address string, port int) error {
 	c.Status = api.Status_unknown
 
 	dialer := websocket.Dialer{WriteBufferSize: MaxMessageSize}
@@ -61,7 +62,7 @@ func (c *Connection) Connect(address string, port int) error {
 
 	// Worker
 	go func() {
-		// defer recoverPanic()
+		defer helpers.RecoverPanic()
 
 		for r := range requests {
 			r.process(ws)
@@ -76,17 +77,7 @@ func (c *Connection) Connect(address string, port int) error {
 	return nil
 }
 
-func (r request) process(ws *websocket.Conn) {
-	data, err := []byte(nil), ws.WriteMessage(websocket.BinaryMessage, r.data)
-	if err == nil {
-		_, data, err = ws.ReadMessage()
-	}
-
-	r.response <- response{data, err}
-	close(r.response)
-}
-
-func (c *Connection) sendRecv(data []byte, name string) ([]byte, error) {
+func (c *Client) sendRecv(data []byte, name string) ([]byte, error) {
 	out := make(chan response)
 	c.requests <- request{data, out}
 
@@ -100,7 +91,7 @@ func (c *Connection) sendRecv(data []byte, name string) ([]byte, error) {
 	}
 }
 
-func (c *Connection) request(r *api.Request) (*api.Response, error) {
+func (c *Client) Request(r *api.Request) (*api.Response, error) {
 	r.Id = atomic.AddUint32(&c.counter, 1)
 
 	// Serialize

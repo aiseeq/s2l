@@ -238,9 +238,9 @@ func dumpVersion(ping api.ResponsePing) {
 }
 
 func generate(c *client.Client) {
-	// c.gameInfo, infoErr = c.Connection.GameInfo()
-	// c.observation, obsErr = c.Connection.Observation(api.RequestObservation{})
-	data, err := c.Connection.Data(api.RequestData{
+	// c.gameInfo, infoErr = c.GameInfo()
+	// c.observation, obsErr = c.Observation(api.RequestObservation{})
+	data, err := c.Data(api.RequestData{
 		AbilityId:  true,
 		UnitTypeId: true,
 		UpgradeId:  true,
@@ -256,8 +256,8 @@ func generate(c *client.Client) {
 	dumpUnits(data.GetUnits())
 	dumpUpgrades(data.GetUpgrades())
 
-	log.Infof("%v", c.Connection.ResponsePing)
-	dumpVersion(c.Connection.ResponsePing)
+	log.Infof("%v", c.ResponsePing)
+	dumpVersion(c.ResponsePing)
 }
 
 func main() {
@@ -266,7 +266,6 @@ func main() {
 	config.LaunchStarcraft()
 	config.StartGame(client.MapPath())
 
-	c := config.Clients[0]
-	// c.Init()
+	c := config.Client
 	generate(c)
 }

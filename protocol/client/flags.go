@@ -1,8 +1,8 @@
 package client
 
 import (
+	"bitbucket.org/aisee/minilog"
 	"flag"
-	"log"
 	"os"
 	"time"
 )
@@ -12,18 +12,8 @@ var (
 	LadderStartPort  = 0
 	LadderServer     = ""
 	LadderOpponentID = ""
+	MapName          = Random1v1Map()
 )
-
-var Maps2021season1 = []string{
-	"DeathAura506",
-	"EternalEmpire506",
-	"EverDream506",
-	"GoldenWall506",
-	"IceandChrome506",
-	"PillarsofGold506",
-	"Submarine506",
-}
-var MapName = Random1v1Map()
 
 func init() {
 	// Ladder Flags
@@ -37,15 +27,13 @@ func init() {
 // Set changes the default value of a command line flag.
 func Set(name, value string) {
 	if err := flag.Set(name, value); err != nil {
-		log.Print(err)
+		log.Error(err)
 	}
 }
 
-var hasLoaded = false
-
 func LoadSettings() bool {
 	if flag.Parsed() {
-		return hasLoaded
+		return false
 	}
 
 	// Parse the command line arguments
@@ -56,12 +44,11 @@ func LoadSettings() bool {
 		os.Exit(0)
 	}
 
-	if !hasProcessPath() {
-		log.Println("Can't find executable path, hope that it's ok. If not, " +
+	if len(processPath) == 0 {
+		log.Warning("Can't find executable path, hope that it's ok. If not, " +
 			"please run StarCraft II first or use the --executable <path> arg")
 	}
 
-	hasLoaded = true
 	return true
 }
 
