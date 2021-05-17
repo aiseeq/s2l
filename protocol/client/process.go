@@ -36,7 +36,6 @@ var (
 func init() {
 	// Blizzard Flags
 	flagStr("executable", &processPath, "The path to StarCraft II.")
-	//flagInt("port", &processSettings.portStart, "The port to make StarCraft II listen on.")
 	flagBool("realtime", &processRealtime, "Whether to run StarCraft II in real time or not.")
 	flagDur("timeout", &processConnectTimeout, "Timeout for how long the library will block for a response.")
 }
@@ -148,19 +147,19 @@ func getUserDirectory() (string, error) {
 		return value, nil
 
 	case "darwin":
-		user, err := user.Current()
+		u, err := user.Current()
 		if err != nil {
 			log.Print("Failed to get current user:", err)
 			return "", err
 		}
-		return filepath.Join(user.HomeDir, "Library", "Application Support", "Blizzard"), nil
+		return filepath.Join(u.HomeDir, "Library", "Application Support", "Blizzard"), nil
 
 	default:
-		user, err := user.Current()
+		u, err := user.Current()
 		if err != nil {
 			return "", err
 		}
-		return user.HomeDir, nil
+		return u.HomeDir, nil
 	}
 }
 
@@ -182,7 +181,7 @@ func sc2Path(path string) string {
 }
 
 func getSubdirs(dir string) []string {
-	dirs := []string{}
+	var dirs []string
 	files, _ := ioutil.ReadDir(dir)
 	for _, f := range files {
 		if f.IsDir() {

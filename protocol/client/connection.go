@@ -1,9 +1,9 @@
 package client
 
 import (
+	log "bitbucket.org/aisee/minilog"
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -95,7 +95,7 @@ func (c *Connection) sendRecv(data []byte, name string) ([]byte, error) {
 		case r := <-out:
 			return r.data, r.error
 		case <-time.After(10 * time.Second):
-			log.Printf("waiting for %v response", name)
+			log.Warningf("waiting for %v response", name)
 		}
 	}
 }
@@ -111,10 +111,10 @@ func (c *Connection) request(r *api.Request) (*api.Response, error) {
 
 	if len(data) > MaxMessageSize {
 		err = fmt.Errorf("message too large: %v (max %v)", len(data), MaxMessageSize)
-		log.Print(err)
+		log.Error(err)
 		return nil, err
 	} else if len(data) > MaxMessageSize/2 {
-		log.Print("warning, large message size: ", len(data))
+		log.Warning("large message size: ", len(data))
 	}
 
 	// Send/Recv
@@ -137,7 +137,7 @@ func (c *Connection) request(r *api.Request) (*api.Response, error) {
 
 	// Check Id
 	if resp.Id != 0 && resp.Id != r.Id {
-		log.Printf("bad response ID: got %v, expected %v", resp.Id, r.Id)
+		log.Errorf("bad response ID: got %v, expected %v", resp.Id, r.Id)
 	}
 
 	// Report errors (if any) and return

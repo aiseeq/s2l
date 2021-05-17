@@ -237,23 +237,36 @@ func dumpVersion(ping api.ResponsePing) {
 	check(w.Flush())
 }
 
-func generate(info client.AgentInfo) {
-	dumpAbilities(info.Data().GetAbilities())
-	dumpBuffs(info.Data().GetBuffs())
-	dumpEffects(info.Data().GetEffects())
-	dumpUnits(info.Data().GetUnits())
-	dumpUpgrades(info.Data().GetUpgrades())
-
-	if c, ok := info.(*client.Client); ok {
-		log.Infof("%v", c.Proto())
-		dumpVersion(c.Proto())
-	} else {
-		log.Fatal("Version info not found!")
+func generate(c *client.Client) {
+	// c.gameInfo, infoErr = c.Connection.GameInfo()
+	// c.observation, obsErr = c.Connection.Observation(api.RequestObservation{})
+	data, err := c.Connection.Data(api.RequestData{
+		AbilityId:  true,
+		UnitTypeId: true,
+		UpgradeId:  true,
+		BuffId:     true,
+		EffectId:   true,
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
+	dumpAbilities(data.GetAbilities())
+	dumpBuffs(data.GetBuffs())
+	dumpEffects(data.GetEffects())
+	dumpUnits(data.GetUnits())
+	dumpUpgrades(data.GetUpgrades())
+
+	log.Infof("%v", c.Connection.ResponsePing)
+	dumpVersion(c.Connection.ResponsePing)
 }
 
 func main() {
-	client.SetMap(client.Random1v1Map())
-	agent := client.AgentFunc(generate)
-	client.RunAgent(client.NewParticipant(api.Race_Random, agent, "NilBot"))
+	bot := client.NewParticipant(api.Race_Random, "NilBot")
+	config := client.NewGameConfig(bot)
+	config.LaunchStarcraft()
+	config.StartGame(client.MapPath())
+
+	c := config.Clients[0]
+	// c.Init()
+	generate(c)
 }

@@ -1,7 +1,7 @@
 package client
 
 import (
-	"log"
+	log "bitbucket.org/aisee/minilog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,29 +24,21 @@ func SetGameVersion(baseBuild uint32, dataVersion string) {
 	launchDataVersion = dataVersion
 }
 
-func (config *gameConfig) reLaunchStarcraft() {
-	config.killAll()
-	config.launchStarcraft()
+func (config *GameConfig) ReLaunchStarcraft() {
+	config.KillAll()
+	config.LaunchStarcraft()
 }
 
-func (config *gameConfig) launchStarcraft() {
-	if len(config.clients) == 0 {
-		log.Panic("No agents set")
-	}
+func (config *GameConfig) LaunchStarcraft() {
+	config.processInfo = config.LaunchProcesses(config.Clients)
+	portStart := launchPortStart + len(config.processInfo) - 1
 
-	portStart := 0
-	if len(config.processInfo) != len(config.clients) {
-		config.killAll()
-		config.processInfo = config.launchProcesses(config.clients)
-		portStart = launchPortStart + len(config.processInfo) - 1
-	}
-
-	config.setupPorts(len(config.clients), portStart, true)
+	// config.SetupPorts(1, portStart, true)
 	config.started = true
 	config.lastPort = portStart
 }
 
-func (config *gameConfig) killAll() {
+func (config *GameConfig) KillAll() {
 	for _, pi := range config.processInfo {
 		if proc, err := os.FindProcess(pi.PID); err == nil && proc != nil {
 			proc.Kill()
@@ -55,13 +47,13 @@ func (config *gameConfig) killAll() {
 	config.processInfo = nil
 }
 
-func (config *gameConfig) launchProcesses(clients []*Client) []ProcessInfo {
+func (config *GameConfig) LaunchProcesses(clients []*Client) []ProcessInfo {
 	// Make sure we have a valid executable path
 	path := processPathForBuild(launchBaseBuild)
 	if _, err := os.Stat(path); err != nil {
-		log.Print("Executable path can't be found, try running the StarCraft II executable first.")
+		log.Error("Executable path can't be found, try running the StarCraft II executable first.")
 		if len(path) > 0 {
-			log.Printf("%v does not exist on your filesystem.", path)
+			log.Errorf("%v does not exist on your filesystem.", path)
 		}
 	}
 
@@ -74,7 +66,7 @@ func (config *gameConfig) launchProcesses(clients []*Client) []ProcessInfo {
 		go func(i int, c *Client) {
 			defer wg.Done()
 
-			info[i] = config.launchAndAttach(path, c)
+			info[i] = config.LaunchAndAttach(path, c)
 
 		}(i, c)
 	}
@@ -83,7 +75,7 @@ func (config *gameConfig) launchProcesses(clients []*Client) []ProcessInfo {
 	return info
 }
 
-func (config *gameConfig) launchAndAttach(path string, c *Client) ProcessInfo {
+func (config *GameConfig) LaunchAndAttach(path string, c *Client) ProcessInfo {
 	pi := ProcessInfo{}
 	pi.Port = launchPortStart + len(config.processInfo) - 1
 
@@ -104,24 +96,23 @@ func (config *gameConfig) launchAndAttach(path string, c *Client) ProcessInfo {
 		// TODO: window size and position
 
 		pi.Path = path
-		pi.PID = startProcess(pi.Path, args)
+		pi.PID = StartProcess(pi.Path, args)
 		if pi.PID == 0 {
-			log.Print("Unable to start sc2 executable with path: ", pi.Path)
+			log.Error("Unable to start sc2 executable with path: ", pi.Path)
 		} else {
-			log.Printf("Launched SC2 (%v), PID: %v", pi.Path, pi.PID)
+			log.Infof("Launched SC2 (%v), PID: %v", pi.Path, pi.PID)
 		}
 
 		// Attach
 		if err := c.Connect(config.netAddress, pi.Port, processConnectTimeout); err != nil {
-			log.Panic("Failed to connect")
+			log.Fatal("Failed to connect")
 		}
 	}
 
-	c.SetProcessInfo(pi)
 	return pi
 }
 
-func startProcess(path string, args []string) int {
+func StartProcess(path string, args []string) int {
 	cmd := exec.Command(path, args...)
 
 	// Set the working directory on windows
@@ -137,7 +128,7 @@ func startProcess(path string, args []string) int {
 	}
 
 	if err := cmd.Start(); err != nil {
-		log.Print(err)
+		log.Error(err)
 		return 0
 	}
 
