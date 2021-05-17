@@ -12,9 +12,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/chippydip/go-sc2ai/api"
-	"github.com/chippydip/go-sc2ai/client"
-	"github.com/chippydip/go-sc2ai/runner"
+	"github.com/aiseeq/s2l/protocol/api"
+	"github.com/aiseeq/s2l/protocol/client"
 )
 
 func check(err error) {
@@ -254,7 +253,7 @@ func generate(info client.AgentInfo) {
 }
 
 func main() {
-	runner.SetMap(runner.Random1v1Map())
+	client.SetMap(client.Random1v1Map())
 	agent := client.AgentFunc(generate)
-	runner.RunAgent(client.NewParticipant(api.Race_Random, agent, "NilBot"))
+	client.RunAgent(client.NewParticipant(api.Race_Random, agent, "NilBot"))
 }
