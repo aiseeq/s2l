@@ -15,6 +15,8 @@ type Client struct {
 
 	counter  uint32
 	requests chan<- request
+
+	Realtime bool
 }
 
 func (c *Client) Connect(address string, port int, timeout time.Duration) error {
@@ -66,6 +68,7 @@ func (c *Client) RequestCreateGame(mapPath string, players []*api.PlayerSetup, r
 		PlayerSetup: players,
 		Realtime:    realtime,
 	})
+	c.Realtime = realtime
 	if err != nil {
 		return err
 	}

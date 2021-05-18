@@ -238,8 +238,6 @@ func dumpVersion(ping api.ResponsePing) {
 }
 
 func generate(c *client.Client) {
-	// c.gameInfo, infoErr = c.GameInfo()
-	// c.observation, obsErr = c.Observation(api.RequestObservation{})
 	data, err := c.Data(api.RequestData{
 		AbilityId:  true,
 		UnitTypeId: true,
