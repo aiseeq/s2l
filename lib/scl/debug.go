@@ -50,6 +50,17 @@ func (b *Bot) DebugAddLines(lines []*api.DebugLine) {
 				Lines: lines}}})
 }
 
+func (b *Bot) DebugAddUnits(unitType api.UnitTypeID, owner api.PlayerID, pos point.Point, qty uint32) {
+	b.DebugAdd(&api.DebugCommand{
+		Command: &api.DebugCommand_CreateUnit{
+			CreateUnit: &api.DebugCreateUnit{
+				UnitType: unitType,
+				Owner:    owner,
+				Pos:      pos.To2D(),
+				Quantity: qty,
+			}}})
+}
+
 func (b *Bot) DebugMap() {
 	var boxes []*api.DebugBox
 

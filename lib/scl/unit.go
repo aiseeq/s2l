@@ -331,7 +331,7 @@ func (u *Unit) IsUnused() bool {
 }
 
 func (u *Unit) IsMoving() bool {
-	return len(u.Orders) > 0 && u.Orders[0].AbilityId == ability.Move
+	return len(u.Orders) > 0 && (u.Orders[0].AbilityId == ability.Move || u.Orders[0].AbilityId == ability.Move_Move)
 }
 
 func (u *Unit) IsCool() bool {

@@ -388,7 +388,6 @@ func (b *Bot) ParseObservation() {
 	b.FoodCap = int(b.Obs.PlayerCommon.FoodCap)
 	b.FoodUsed = int(b.Obs.PlayerCommon.FoodUsed)
 	b.FoodLeft = b.FoodCap - b.FoodUsed
-	// todo: check, there should be 22.4 or 16?
 	b.MineralsPerFrame = float64(b.Obs.Score.ScoreDetails.CollectionRateMinerals) / 60 / 22.4
 	b.VespenePerFrame = float64(b.Obs.Score.ScoreDetails.CollectionRateVespene) / 60 / 22.4
 	b.Upgrades = map[api.AbilityID]bool{}

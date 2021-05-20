@@ -103,6 +103,13 @@ func (cs *CommandsStack) ProcessSimple(actions *actions.Actions, simple map[api.
 		if queue {
 			// No repeat checks for queued orders
 			us = units
+			for _, unit := range units {
+				// But save history for the last action
+				UnitsOrders[unit.Tag] = UnitOrder{
+					Loop:    unit.Bot.Loop,
+					Ability: ability,
+				}
+			}
 		} else {
 			for _, unit := range units {
 				// Check unit's current state and last order
@@ -137,11 +144,24 @@ func (cs *CommandsStack) ProcessPos(actions *actions.Actions, posList map[api.Ab
 			if queue {
 				// No repeat checks for queued orders
 				us = units
+				for _, unit := range units {
+					// But save history for the last action
+					UnitsOrders[unit.Tag] = UnitOrder{
+						Loop:    unit.Bot.Loop,
+						Ability: ability,
+						Pos:     position,
+					}
+				}
 			} else {
 				for _, unit := range units {
 					// Check unit's current state and last order
+					/*log.Info(unit.TargetAbility(), ability)
+					log.Info((unit.TargetPos()-position).Len())
+					log.Info(UnitsOrders[unit.Tag].Ability, ability)
+					log.Info(UnitsOrders[unit.Tag].Pos, position)*/
 					if unit.SpamCmds ||
-						((unit.TargetAbility() != ability || (unit.TargetPos()-position).Len() > samePoint) &&
+						((unit.TargetAbility() != ability ||
+							(unit.TargetPos()-position).Len() > samePoint) &&
 							(unit.IsIdle() ||
 								UnitsOrders[unit.Tag].Ability != ability ||
 								UnitsOrders[unit.Tag].Pos != position)) {
@@ -177,6 +197,14 @@ func (cs *CommandsStack) ProcessTag(actions *actions.Actions, tagList map[api.Ab
 			if queue {
 				// No repeat checks for queued orders
 				us = units
+				for _, unit := range units {
+					// But save history for the last action
+					UnitsOrders[unit.Tag] = UnitOrder{
+						Loop:    unit.Bot.Loop,
+						Ability: ability,
+						Tag:     tag,
+					}
+				}
 			} else {
 				for _, unit := range units {
 					// Check unit's current state and last order
@@ -216,6 +244,9 @@ func (cs *CommandsStack) Process(actions *actions.Actions) {
 	cs.ProcessPos(actions, cs.Pos, false)
 	cs.ProcessTag(actions, cs.Tag, false)
 
+	// todo: Тут, скорее всего, бага. Но она проявится если давать несколько команд в очереди сразу
+	// они могут быть разного типа и идти в любом порядке. Здесь же, походу, пределён порядок типов
+	// Короче, будет работать только если сначала давать одну команду без очереди, а потом одну с очередью и всё
 	cs.ProcessSimple(actions, cs.SimpleQueue, true)
 	cs.ProcessPos(actions, cs.PosQueue, true)
 	cs.ProcessTag(actions, cs.TagQueue, true)
