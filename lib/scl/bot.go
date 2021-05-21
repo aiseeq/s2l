@@ -138,7 +138,24 @@ func New(client *client.Client, ucc func(unit *Unit)) *Bot {
 	return &b
 }
 
-func (b *Bot) Init() {
+func (b *Bot) Init(renewPaths bool) {
+	// Empty globals. Todo: move into obj!!!
+	Types = []*api.UnitTypeData{}
+	GroundAttackCircle = map[api.UnitTypeID]point.Points{}
+	Upgrades = []*api.UpgradeData{}
+	Effects = []*api.EffectData{}
+	UnitCost = map[api.UnitTypeID]Cost{}
+	AbilityCost = map[api.AbilityID]Cost{}
+	AbilityUnit = map[api.AbilityID]api.UnitTypeID{}
+	UnitAbility = map[api.UnitTypeID]api.AbilityID{}
+	UnitAliases = Aliases{}
+	UnitsOrders = map[api.UnitTag]UnitOrder{}
+
+	attributes = map[api.UnitTypeID]map[api.Attribute]bool{}
+	weapons = map[api.UnitTypeID]Weapon{}
+	hitsHistory = map[api.UnitTag][]int{}
+	prevUnits = map[api.UnitTag]*Unit{}
+
 	b.UpdateObservation()
 	b.UpdateData()
 	b.UpdateInfo()
@@ -153,7 +170,9 @@ func (b *Bot) Init() {
 	b.InitMining()
 	b.FindRamps()
 	b.InitRamps()
-	go b.RenewPaths()
+	if renewPaths {
+		go b.RenewPaths()
+	}
 }
 
 func (b *Bot) CanBuy(ability api.AbilityID) bool {

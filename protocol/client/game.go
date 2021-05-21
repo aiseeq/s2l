@@ -84,7 +84,7 @@ func (config *GameConfig) StartGame(mapPath string) {
 	config.JoinGame()
 }
 
-func LaunchAndJoin(bot, cpu *api.PlayerSetup) *Client {
+func LaunchAndJoin(bot, cpu *api.PlayerSetup) *GameConfig {
 	if !LoadSettings() {
 		log.Fatal("Can't load settings")
 	}
@@ -104,5 +104,5 @@ func LaunchAndJoin(bot, cpu *api.PlayerSetup) *Client {
 		config.StartGame(MapPath())
 	}
 
-	return config.Client
+	return config
 }

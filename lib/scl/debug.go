@@ -220,6 +220,33 @@ func (b *Bot) DebugOrders() {
 	b.DebugAddLines(dls)
 }
 
+func (b *Bot) DebugPoints(ps ...point.Point) {
+	var boxes []*api.DebugBox
+	for _, p := range ps {
+		z := b.Grid.HeightAt(p)
+		boxes = append(boxes, &api.DebugBox{
+			Color: &Yellow,
+			Min:   &api.Point{X: float32(p.X()) - 0.25, Y: float32(p.Y()) - 0.25, Z: float32(z) - 50},
+			Max:   &api.Point{X: float32(p.X()) + 0.25, Y: float32(p.Y()) + 0.25, Z: float32(z) + 0.01},
+		})
+	}
+	b.DebugAddBoxes(boxes)
+}
+
+func (b *Bot) DebugCircles(cs ...point.Circle) {
+	var spheres []*api.DebugSphere
+	for _, c := range cs {
+		p := c.Point.To3D()
+		p.Z = float32(b.Grid.HeightAt(c.Point)) + 0.01
+		spheres = append(spheres, &api.DebugSphere{
+			Color: &Yellow,
+			P:     p,
+			R:     float32(c.R),
+		})
+	}
+	b.DebugAddSpheres(spheres)
+}
+
 func (b *Bot) Debug2x2Buildings(ps ...point.Point) {
 	var boxes []*api.DebugBox
 	for _, p := range ps {

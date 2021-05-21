@@ -18,6 +18,10 @@ type Line struct {
 	A, B Point
 }
 type Lines []Line
+type Circle struct {
+	Point
+	R float64
+}
 
 func Pt(x, y float64) Point {
 	return Point(complex(x, y))
@@ -299,4 +303,41 @@ func (ps Points) FirstFurtherThan(dist float64, from Pointer) Point {
 
 func (ls *Lines) Add(l ...Line) {
 	*ls = append(*ls, l...)
+}
+
+func NewCircle(x, y, r float64) *Circle {
+	return &Circle{Point(complex(x, y)), r}
+}
+
+func PtCircle(p *Point, r float64) *Circle {
+	return &Circle{*p, r}
+}
+
+// Find the intersection of the two circles, the number of intersections may have 0, 1, 2
+func Intersect(a *Circle, b *Circle) (ps Points) {
+	if a.X() > b.X() {
+		return Intersect(b, a) // Try to fix intersection bug. Looks like, first circle should be on the left
+	}
+	dx, dy := b.X()-a.X(), b.Y()-a.Y()
+	lr := a.R + b.R                //radius and
+	dr := math.Abs(a.R - b.R)      //radius difference
+	ab := math.Sqrt(dx*dx + dy*dy) //center distance
+	if ab <= lr && ab > dr {
+		theta1 := math.Atan(dy / dx)
+		ef := lr - ab
+		ao := a.R - ef/2
+		theta2 := math.Acos(ao / a.R)
+		theta := theta1 + theta2
+		xc := a.X() + a.R*math.Cos(theta)
+		yc := a.Y() + a.R*math.Sin(theta)
+		ps = append(ps, Pt(xc, yc))
+		if ab < lr { //two intersections
+			theta3 := math.Acos(ao / a.R)
+			theta = theta3 - theta1
+			xd := a.X() + a.R*math.Cos(theta)
+			yd := a.Y() - a.R*math.Sin(theta)
+			ps = append(ps, Pt(xd, yd))
+		}
+	}
+	return
 }

@@ -2,38 +2,62 @@ package main
 
 import (
 	log "bitbucket.org/aisee/minilog"
+	"github.com/aiseeq/s2l/lib/point"
 	"github.com/aiseeq/s2l/lib/scl"
 	"github.com/aiseeq/s2l/protocol/api"
 	"github.com/aiseeq/s2l/protocol/client"
 	"github.com/aiseeq/s2l/protocol/enums/ability"
 	"github.com/aiseeq/s2l/protocol/enums/terran"
+	"github.com/gonum/floats"
+	"github.com/google/gxui/math"
 )
 
 var B *scl.Bot
 var MinersByCC map[api.UnitTag]map[api.UnitTag]struct{}
 var MinersByMineral map[api.UnitTag][]api.UnitTag
 var MineralForMiner map[api.UnitTag]api.UnitTag
+var TargetForMineral map[api.UnitTag]point.Point
+
+func InitMinerals() {
+	TargetForMineral = map[api.UnitTag]point.Point{}
+	cc := B.Units.My[terran.CommandCenter].First()
+	mfs := B.Units.Minerals.All().CloserThan(scl.ResourceSpreadDistance, cc)
+	dist := float64(mfs.First().Radius + 0.2) // + miner.Radius
+	// log.Info(mfs.Len())
+	for _, mf := range mfs {
+		target := mf.Towards(cc, dist)
+		if mf2 := mfs.CloserThan(dist, target).ClosestTo(target); mf2 != nil && mf.Tag != mf2.Tag {
+			// There could be only one mineral so close
+			targetMineral := point.NewCircle(float64(mf.Pos.X), float64(mf.Pos.Y), dist)
+			closeMineral := point.NewCircle(float64(mf2.Pos.X), float64(mf2.Pos.Y), dist)
+			// log.Info(targetMineral, closeMineral)
+			pts := point.Intersect(targetMineral, closeMineral)
+			if len(pts) == 2 {
+				target = pts.ClosestTo(target)
+				// B.DebugCircles(*targetMineral, *closeMineral)
+				// B.DebugPoints(pts...)
+			}
+		}
+		TargetForMineral[mf.Tag] = target
+		// B.DebugPoints(target)
+	}
+	// B.DebugSend()
+}
 
 func MicroManage() {
 	// time.Sleep(200 * time.Millisecond)
 	if B.Loop == 0 {
 		SplitScvs()
+		InitMinerals()
 	}
 
 	ManageNewMiner()
 	cc := B.Units.My[terran.CommandCenter].First()
 	for _, miner := range B.Units.My[terran.SCV] {
 		mfTag := MineralForMiner[miner.Tag]
-		mf := B.Units.Minerals.All().ByTag(mfTag) // todo: more effective?
-
-		if mf == nil {
-			log.Error("Wat?")
-			continue
-		}
-
-		target := mf.Towards(cc, float64(mf.Radius+miner.Radius))
+		target := TargetForMineral[mfTag] // todo: check if still exist
 		if !miner.IsReturning() && len(miner.Orders) < 2 &&
-			miner.IsFurtherThan(1, target) && miner.IsCloserThan(2, target) {
+			miner.IsFurtherThan(0.75, target) && miner.IsCloserThan(2, target) {
 			miner.CommandPos(ability.Move_Move, target)
 			miner.CommandTagQueue(ability.Smart, mfTag)
 		}
@@ -148,14 +172,17 @@ func SplitAndForget() {
 
 func BuildSCVs() {
 	cc := B.Units.My[terran.CommandCenter].First()
-	if cc.IsIdle() {
+	if cc.IsIdle() && B.Units.My[terran.SCV].Len() < workersLimit {
 		cc.Command(ability.Train_SCV)
 	}
 }
 
 func CheckTime() {
 	if B.Loop >= scl.TimeToLoop(2, 0) {
-		log.Infof("Total minerals collected: %f", B.Obs.Score.ScoreDetails.CollectedMinerals)
+		log.Infof("Total: %f, rate: %f, final: %d",
+			B.Obs.Score.ScoreDetails.CollectedMinerals,
+			B.Obs.Score.ScoreDetails.CollectionRateMinerals,
+			B.Minerals)
 		if err := B.Client.LeaveGame(); err != nil {
 			log.Error(err)
 		}
@@ -182,9 +209,9 @@ func Step() {
 	B.ParseOrders()
 
 	// SimpleLogic() // 1705
-	// SplitAndForget() // 1745
+	// SplitAndForget() // 1745 - unlim, 1365 - lim12, 1675 - lim16
 	// SplitAndManage() // 1750
-	MicroManage() // 1925 - for 0.5 position error (but it needs fixing). For 1 ~= 1900
+	MicroManage() // 1925 - unlim, 1510 - lim12, 1855 - lim16
 
 	B.Cmds.Process(&B.Actions)
 	if len(B.Actions) > 0 {
@@ -201,38 +228,58 @@ func Step() {
 
 func AddSupply() {
 	B.DebugAddUnits(terran.SupplyDepot, B.Obs.PlayerCommon.PlayerId, B.Locs.MyStart.Towards(B.Locs.MapCenter, 3), 1)
+	// B.DebugAddUnits(terran.MissileTurret, B.Obs.PlayerCommon.PlayerId, B.Locs.MyStart.Towards(B.Locs.MapCenter, -2), 1)
 	B.DebugSend()
 }
 
+const workersLimit = 16
+const repeats = 10
+
 func main() {
-	// client.SetMap("GoldenWall506.SC2Map")
-	// client.SetMap("DeathAura506.SC2Map")
-	// client.SetRealtime()
-	bot := client.NewParticipant(api.Race_Terran, "MiningTest")
-	cpu := client.NewComputer(api.Race_Protoss, api.Difficulty_Medium, api.AIBuild_RandomBuild)
-	c := client.LaunchAndJoin(bot, cpu)
-
-	B = scl.New(c, nil)
-	B.FramesPerOrder = 3
-	B.Init()
-
-	MineralForMiner = map[api.UnitTag]api.UnitTag{}
-	MinersByMineral = map[api.UnitTag][]api.UnitTag{}
-	MinersByCC = map[api.UnitTag]map[api.UnitTag]struct{}{}
-
-	AddSupply() // To prevent supply block
-
-	for B.Client.Status == api.Status_in_game {
-		Step()
-
-		if _, err := c.Step(api.RequestStep{Count: uint32(B.FramesPerOrder)}); err != nil {
-			if err.Error() == "Not in a game" {
-				log.Info("Game over")
-				return
+	times := map[string][]float64{}
+	var cfg *client.GameConfig
+	for iter := 0; iter < repeats; iter++ {
+		for _, mapName := range client.Maps2021season1 { // []string{"IceandChrome506"}
+			// client.SetRealtime()
+			if cfg == nil {
+				client.SetMap(mapName + ".SC2Map")
+				bot := client.NewParticipant(api.Race_Terran, "MiningTest")
+				cpu := client.NewComputer(api.Race_Protoss, api.Difficulty_Medium, api.AIBuild_RandomBuild)
+				cfg = client.LaunchAndJoin(bot, cpu)
+			} else {
+				cfg.StartGame(mapName + ".SC2Map")
 			}
-			log.Fatal(err)
-		}
+			c := cfg.Client
 
-		B.UpdateObservation()
+			B = scl.New(c, nil)
+			B.FramesPerOrder = 3
+			B.LastLoop = -math.MaxInt
+			B.Init(false) // we don't need to renew paths here
+
+			MineralForMiner = map[api.UnitTag]api.UnitTag{}
+			MinersByMineral = map[api.UnitTag][]api.UnitTag{}
+			MinersByCC = map[api.UnitTag]map[api.UnitTag]struct{}{}
+
+			AddSupply() // To prevent supply block
+
+			for B.Client.Status == api.Status_in_game {
+				Step()
+
+				if _, err := c.Step(api.RequestStep{Count: uint32(B.FramesPerOrder)}); err != nil {
+					if err.Error() == "Not in a game" {
+						log.Info("Game over")
+						break
+					}
+					log.Fatal(err)
+				}
+
+				B.UpdateObservation()
+			}
+			times[mapName] = append(times[mapName], float64(B.Obs.Score.ScoreDetails.CollectedMinerals))
+		}
+	}
+	for mapName, res := range times {
+		log.Infof("%s, min: %f, max: %f, avg: %f, %v", mapName,
+			floats.Min(res), floats.Max(res), floats.Sum(res)/float64(len(res)), res)
 	}
 }
