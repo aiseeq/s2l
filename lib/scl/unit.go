@@ -15,7 +15,6 @@ import (
 
 type Unit struct {
 	api.Unit
-	Bot             *Bot
 	SpamCmds        bool
 	HPS             float64
 	Hits            float64
@@ -52,29 +51,13 @@ type UnitOrder struct {
 type UnitTypes []api.UnitTypeID
 type Aliases map[api.UnitTypeID]UnitTypes
 
-var Types []*api.UnitTypeData
-var GroundAttackCircle = map[api.UnitTypeID]point.Points{}
-var Upgrades []*api.UpgradeData
-var Effects []*api.EffectData
-var UnitCost = map[api.UnitTypeID]Cost{}
-var AbilityCost = map[api.AbilityID]Cost{}
-var AbilityUnit = map[api.AbilityID]api.UnitTypeID{}
-var UnitAbility = map[api.UnitTypeID]api.AbilityID{}
-var UnitAliases = Aliases{}
-var UnitsOrders = map[api.UnitTag]UnitOrder{}
+func (b *Bot) InitUnits(typeData []*api.UnitTypeData) {
+	b.U.Types = typeData
 
-var attributes = map[api.UnitTypeID]map[api.Attribute]bool{}
-var weapons = map[api.UnitTypeID]Weapon{}
-var hitsHistory = map[api.UnitTag][]int{}
-var prevUnits = map[api.UnitTag]*Unit{}
-
-func InitUnits(typeData []*api.UnitTypeData) {
-	Types = typeData
-
-	for _, td := range Types {
-		attributes[td.UnitId] = map[api.Attribute]bool{}
+	for _, td := range b.U.Types {
+		b.U.Attributes[td.UnitId] = map[api.Attribute]bool{}
 		for _, attribute := range td.Attributes {
-			attributes[td.UnitId][attribute] = true
+			b.U.Attributes[td.UnitId][attribute] = true
 		}
 		cost := Cost{
 			Minerals: int(td.MineralCost),
@@ -83,7 +66,7 @@ func InitUnits(typeData []*api.UnitTypeData) {
 			Time:     int(td.BuildTime),
 		}
 		// fixes
-		if td.Race == api.Race_Zerg && attributes[td.UnitId][api.Attribute_Structure] {
+		if td.Race == api.Race_Zerg && b.U.Attributes[td.UnitId][api.Attribute_Structure] {
 			cost.Minerals -= 50 // Why there is drone cost in buildings cost?
 		}
 		if td.AbilityId == ability.Train_Zergling {
@@ -94,7 +77,7 @@ func InitUnits(typeData []*api.UnitTypeData) {
 			cost.Minerals -= 400 // Deduct CC price
 		}
 		if td.UnitId == terran.Bunker {
-			weapon := *Types[terran.Marine].Weapons[0] // Make copy
+			weapon := *b.U.Types[terran.Marine].Weapons[0] // Make copy
 			td.Weapons = append(td.Weapons, &weapon)
 			td.Weapons[0].Attacks *= 4 // 4 marines
 			td.Weapons[0].Range++      // Bunker range boost
@@ -117,10 +100,10 @@ func InitUnits(typeData []*api.UnitTypeData) {
 				},
 			}
 		}
-		UnitCost[td.UnitId] = cost
-		AbilityCost[td.AbilityId] = cost
-		AbilityUnit[td.AbilityId] = td.UnitId
-		UnitAbility[td.UnitId] = td.AbilityId
+		b.U.UnitCost[td.UnitId] = cost
+		b.U.AbilityCost[td.AbilityId] = cost
+		b.U.AbilityUnit[td.AbilityId] = td.UnitId
+		b.U.UnitAbility[td.UnitId] = td.AbilityId
 		w := Weapon{}
 		for _, weapon := range td.Weapons {
 			if weapon.Type == api.Weapon_Ground || weapon.Type == api.Weapon_Any {
@@ -138,13 +121,13 @@ func InitUnits(typeData []*api.UnitTypeData) {
 				w.airDamage = float64(weapon.Damage * float32(weapon.Attacks))
 				w.airDps = w.airDamage / float64(weapon.Speed)
 			}
-			weapons[td.UnitId] = w
+			b.U.Weapons[td.UnitId] = w
 		}
-		UnitAliases.Add(td)
+		b.U.UnitAliases.Add(td)
 
 		// find cells of ground attack circles for units
-		if weapons[td.UnitId].ground != nil {
-			r := float64(weapons[td.UnitId].ground.Range)
+		if b.U.Weapons[td.UnitId].ground != nil {
+			r := float64(b.U.Weapons[td.UnitId].ground.Range)
 			r += 2 // Max unit radius + max target radius
 			r2 := r * r
 			ps := point.Points{}
@@ -158,44 +141,43 @@ func InitUnits(typeData []*api.UnitTypeData) {
 					}
 				}
 			}
-			GroundAttackCircle[td.UnitId] = ps
+			b.U.GroundAttackCircle[td.UnitId] = ps
 		}
 	}
 }
 
-func InitUpgrades(upgradeData []*api.UpgradeData) {
-	Upgrades = upgradeData
+func (b *Bot) InitUpgrades(upgradeData []*api.UpgradeData) {
+	b.U.Upgrades = upgradeData
 
-	for _, ud := range Upgrades {
+	for _, ud := range b.U.Upgrades {
 		cost := Cost{
 			Minerals: int(ud.MineralCost),
 			Vespene:  int(ud.VespeneCost),
 			Food:     0,
 			Time:     int(ud.ResearchTime),
 		}
-		AbilityCost[ud.AbilityId] = cost
+		b.U.AbilityCost[ud.AbilityId] = cost
 		// api bug workaroubd: TerranVehicleArmorsLevel1 -> Research_TerranVehicleAndShipPlatingLevel1
 		if ud.AbilityId == 852 {
-			AbilityCost[864] = cost
+			b.U.AbilityCost[864] = cost
 		}
 		if ud.AbilityId == 853 {
-			AbilityCost[865] = cost
+			b.U.AbilityCost[865] = cost
 		}
 		if ud.AbilityId == 854 {
-			AbilityCost[866] = cost
+			b.U.AbilityCost[866] = cost
 		}
 		// log.Info(ud)
 	}
 }
 
-func InitEffects(effectData []*api.EffectData) {
-	Effects = effectData
+func (b *Bot) InitEffects(effectData []*api.EffectData) {
+	b.U.Effects = effectData
 }
 
 func (b *Bot) NewUnit(unit *api.Unit) (*Unit, bool) {
 	u := &Unit{
 		Unit:    *unit,
-		Bot:     b,
 		Hits:    float64(unit.Health + unit.Shield),
 		HitsMax: float64(unit.HealthMax + unit.ShieldMax),
 	}
@@ -203,9 +185,9 @@ func (b *Bot) NewUnit(unit *api.Unit) (*Unit, bool) {
 		return u, false
 	}
 
-	// Check saved orders, because order itself is not in observation yet if u.Bot.FramesPerOrder not passed
-	order, ok := UnitsOrders[u.Tag]
-	if ok && order.Loop+u.Bot.FramesPerOrder > u.Bot.Loop {
+	// Check saved orders, because order itself is not in observation yet if B.FramesPerOrder not passed
+	order, ok := b.U.UnitsOrders[u.Tag]
+	if ok && order.Loop+B.FramesPerOrder > B.Loop {
 		uo := api.UnitOrder{AbilityId: order.Ability}
 		if order.Pos != 0 {
 			uo.Target = &api.UnitOrder_TargetWorldSpacePos{TargetWorldSpacePos: order.Pos.To3D()}
@@ -217,13 +199,13 @@ func (b *Bot) NewUnit(unit *api.Unit) (*Unit, bool) {
 	}
 
 	isNew := true
-	pu, ok := prevUnits[u.Tag]
+	pu, ok := b.U.PrevUnits[u.Tag]
 	if ok {
 		isNew = false
 	} else {
 		pu = u
 	}
-	hits := hitsHistory[u.Tag]
+	hits := b.U.HitsHistory[u.Tag]
 
 	if len(hits) > 0 && hits[0] < b.Loop-HitHistoryLoops {
 		hits = hits[2:]
@@ -250,8 +232,8 @@ func (b *Bot) NewUnit(unit *api.Unit) (*Unit, bool) {
 		u.LastMaxCooldown = float64(u.WeaponCooldown)
 	}
 
-	hitsHistory[u.Tag] = hits
-	prevUnits[u.Tag] = u
+	b.U.HitsHistory[u.Tag] = hits
+	b.U.PrevUnits[u.Tag] = u
 	return u, isNew
 }
 
@@ -275,18 +257,18 @@ func (u *Unit) GetWayMap(safe bool) (*grid.Grid, WaypointsMap) {
 	var navGrid *grid.Grid
 	var waymap WaypointsMap
 	if safe {
-		navGrid = u.Bot.SafeGrid
-		waymap = u.Bot.SafeWayMap
-		if u.UnitType == terran.Reaper && u.Bot.ReaperGrid != nil && u.Bot.ReaperWayMap != nil {
-			navGrid = u.Bot.ReaperSafeGrid
-			waymap = u.Bot.ReaperSafeWayMap
+		navGrid = B.SafeGrid
+		waymap = B.SafeWayMap
+		if u.UnitType == terran.Reaper && B.ReaperGrid != nil && B.ReaperWayMap != nil {
+			navGrid = B.ReaperSafeGrid
+			waymap = B.ReaperSafeWayMap
 		}
 	} else {
-		navGrid = u.Bot.Grid
-		waymap = u.Bot.WayMap
-		if u.UnitType == terran.Reaper && u.Bot.ReaperGrid != nil && u.Bot.ReaperWayMap != nil {
-			navGrid = u.Bot.ReaperGrid
-			waymap = u.Bot.ReaperWayMap
+		navGrid = B.Grid
+		waymap = B.WayMap
+		if u.UnitType == terran.Reaper && B.ReaperGrid != nil && B.ReaperWayMap != nil {
+			navGrid = B.ReaperGrid
+			waymap = B.ReaperWayMap
 		}
 	}
 	return navGrid, waymap
@@ -323,7 +305,7 @@ func (u *Unit) IsUnused() bool {
 	if u.AddOnTag == 0 {
 		return len(u.Orders) == 0
 	}
-	reactor := u.Bot.Units.My.OfType(UnitAliases.For(terran.Reactor)...).ByTag(u.AddOnTag)
+	reactor := B.Units.My.OfType(B.U.UnitAliases.For(terran.Reactor)...).ByTag(u.AddOnTag)
 	if reactor != nil && reactor.IsReady() {
 		return len(u.Orders) < 2
 	}
@@ -347,7 +329,7 @@ func (u *Unit) IsVisible() bool {
 }
 
 func (u *Unit) IsPosVisible() bool {
-	return u.Bot.Grid.IsVisible(u)
+	return B.Grid.IsVisible(u)
 }
 
 var GatheringAbilities = map[api.AbilityID]bool{
@@ -400,15 +382,15 @@ func (u *Unit) IsReady() bool {
 }
 
 func (u *Unit) IsStructure() bool {
-	return attributes[u.UnitType][api.Attribute_Structure]
+	return B.U.Attributes[u.UnitType][api.Attribute_Structure]
 }
 
 func (u *Unit) IsArmored() bool {
-	return attributes[u.UnitType][api.Attribute_Armored]
+	return B.U.Attributes[u.UnitType][api.Attribute_Armored]
 }
 
 func (u *Unit) IsLight() bool {
-	return attributes[u.UnitType][api.Attribute_Light]
+	return B.U.Attributes[u.UnitType][api.Attribute_Light]
 }
 
 func (u *Unit) IsWorker() bool {
@@ -451,7 +433,7 @@ func (u *Unit) HasTrueAbility(a api.AbilityID) bool {
 
 func (u *Unit) HasTechlab() bool {
 	if u.AddOnTag != 0 {
-		tl := u.Bot.Units.My.OfType(UnitAliases.For(terran.TechLab)...).ByTag(u.AddOnTag)
+		tl := B.Units.My.OfType(B.U.UnitAliases.For(terran.TechLab)...).ByTag(u.AddOnTag)
 		if tl != nil && tl.IsReady() {
 			return true
 		}
@@ -461,7 +443,7 @@ func (u *Unit) HasTechlab() bool {
 
 func (u *Unit) HasReactor() bool {
 	if u.AddOnTag != 0 {
-		tl := u.Bot.Units.My.OfType(UnitAliases.For(terran.Reactor)...).ByTag(u.AddOnTag)
+		tl := B.Units.My.OfType(B.U.UnitAliases.For(terran.Reactor)...).ByTag(u.AddOnTag)
 		if tl != nil && tl.IsReady() {
 			return true
 		}
@@ -470,23 +452,23 @@ func (u *Unit) HasReactor() bool {
 }
 
 func (u *Unit) Speed() float64 {
-	return float64(Types[u.UnitType].MovementSpeed)
+	return float64(B.U.Types[u.UnitType].MovementSpeed)
 }
 
 func (u *Unit) GroundDPS() float64 {
-	return weapons[u.UnitType].groundDps
+	return B.U.Weapons[u.UnitType].groundDps
 }
 
 func (u *Unit) AirDPS() float64 {
-	return weapons[u.UnitType].airDps
+	return B.U.Weapons[u.UnitType].airDps
 }
 
 func (u *Unit) GroundDamage() float64 {
-	return weapons[u.UnitType].groundDamage
+	return B.U.Weapons[u.UnitType].groundDamage
 }
 
 func (u *Unit) AirDamage() float64 {
-	return weapons[u.UnitType].airDamage
+	return B.U.Weapons[u.UnitType].airDamage
 }
 
 func (u *Unit) IsArmed() bool {
@@ -494,21 +476,21 @@ func (u *Unit) IsArmed() bool {
 }
 
 func (u *Unit) GroundRange() float64 {
-	if weapon := weapons[u.UnitType].ground; weapon != nil {
+	if weapon := B.U.Weapons[u.UnitType].ground; weapon != nil {
 		return float64(weapon.Range)
 	}
 	return -1
 }
 
 func (u *Unit) AirRange() float64 {
-	if weapon := weapons[u.UnitType].air; weapon != nil {
+	if weapon := B.U.Weapons[u.UnitType].air; weapon != nil {
 		return float64(weapon.Range)
 	}
 	return -1
 }
 
 func (u *Unit) SightRange() float64 {
-	return float64(Types[u.UnitType].SightRange)
+	return float64(B.U.Types[u.UnitType].SightRange)
 }
 
 func (u *Unit) RangeDelta(target *Unit, gap float64) float64 {
@@ -627,18 +609,18 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 		// Move directly from enemy
 		escVec = (pos - hazard.Point()).Norm().Mul(airSpeedBoostRange)
 	}
-	if !u.Bot.Grid.IsPathable(u.Point() + escVec) {
+	if !B.Grid.IsPathable(u.Point() + escVec) {
 		for x := 1.0; x < 4; x++ {
 			esc1 := u.Point() + escVec.Rotate(math.Pi*2.0/16.0*x)
-			if u.Bot.Grid.IsPathable(esc1) {
+			if B.Grid.IsPathable(esc1) {
 				return esc1, false
 			}
 			esc2 := u.Point() + escVec.Rotate(-math.Pi*2.0/16.0*x)
-			if u.Bot.Grid.IsPathable(esc2) {
+			if B.Grid.IsPathable(esc2) {
 				return esc2, false
 			}
 		}
-		return u.Bot.Locs.MyStart, false // Try to go home
+		return B.Locs.MyStart, false // Try to go home
 	}
 	return u.Point() + escVec, false
 }
@@ -646,7 +628,7 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 /*func (u *Unit) GroundFallbackPos(enemies Units, gap float64, safePath Steps, dist int) (point.Point, bool) { // bool = is safe
 	safePos := safePath.Follow(u, dist)
 	if safePos == 0 {
-		safePos = u.Bot.Locs.MyStart
+		safePos = B.Locs.MyStart
 	}
 	if enemies.Empty() {
 		return safePos, true
@@ -671,7 +653,7 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 	for x := 0.0; x < 16; x++ {
 		vec := point.Pt(1, 0).Rotate(math.Pi * 2.0 / 16.0 * x)
 		nextPoint := u.Point() + vec.Mul(float64(dist))
-		if prevPoint.Floor() == nextPoint.Floor() || !u.Bot.Grid.IsPathable(nextPoint) {
+		if prevPoint.Floor() == nextPoint.Floor() || !B.Grid.IsPathable(nextPoint) {
 			continue
 		}
 
@@ -699,19 +681,19 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 }*/
 
 func (u *Unit) GroundFallback(enemies Units, gap float64, safePos point.Point) {
-	if UnitsOrders[u.Tag].Loop+AttackDelay.Max(u.UnitType, u.Bot.FramesPerOrder) > u.Bot.Loop {
+	if B.U.UnitsOrders[u.Tag].Loop+AttackDelay.Max(u.UnitType, B.FramesPerOrder) > B.Loop {
 		return // Not more than FramesPerOrder
 	}
 	// fbp, _ := u.GroundFallbackPos(enemies, gap, safePath, 5)
 	fbp := safePos
-	if !u.Bot.SafeGrid.IsPathable(fbp) {
-		if pos := u.Bot.FindClosestPathable(u.Bot.SafeGrid, fbp); pos != 0 {
+	if !B.SafeGrid.IsPathable(fbp) {
+		if pos := B.FindClosestPathable(B.SafeGrid, fbp); pos != 0 {
 			fbp = pos
 		}
 	}
 	from := u.Point()
-	if !u.Bot.SafeGrid.IsPathable(from) {
-		if pos := u.Bot.FindClosestPathable(u.Bot.SafeGrid, from); pos != 0 {
+	if !B.SafeGrid.IsPathable(from) {
+		if pos := B.FindClosestPathable(B.SafeGrid, from); pos != 0 {
 			from = pos
 		}
 	}
@@ -774,7 +756,7 @@ func (u *Unit) FindAssignedBuilder(builders Units) *Unit {
 	for _, builder := range builders {
 		// log.Info(builder.TargetAbility(), builder.TargetPos(), u.Point(), builder.TargetTag(), u.Tag)
 		if builder.TargetAbility() == ability.Build_Refinery {
-			geyser := u.Bot.Units.Geysers.All().ByTag(builder.TargetTag())
+			geyser := B.Units.Geysers.All().ByTag(builder.TargetTag())
 			// log.Info(geyser.Point(), u.Point())
 			if geyser != nil && geyser.Point() == u.Point() {
 				return builder
@@ -826,7 +808,7 @@ func (u *Unit) EvadeEffectsPos(ptr point.Pointer, checkKD8 bool, eids ...api.Eff
 	upos := ptr.Point()
 	// And also reaper mines
 	if !u.IsFlying && checkKD8 {
-		kds := append(u.Bot.Units.My[terran.KD8Charge], u.Bot.Units.Enemy[terran.KD8Charge]...)
+		kds := append(B.Units.My[terran.KD8Charge], B.Units.Enemy[terran.KD8Charge]...)
 		if kds.Exists() {
 			kd := kds.ClosestTo(upos)
 			gap := upos.Dist(kd) - float64(u.Radius) - KD8Radius - 0.1
@@ -834,21 +816,21 @@ func (u *Unit) EvadeEffectsPos(ptr point.Pointer, checkKD8 bool, eids ...api.Eff
 			if gap < 0 {
 				// Negative towards = outwards
 				pos := upos.Towards(kd, gap-1)
-				if u.Bot.Grid.IsPathable(pos) {
+				if B.Grid.IsPathable(pos) {
 					return pos, false
 				}
 			}
 		}
 	}
-	for _, e := range u.Bot.Obs.RawData.Effects {
+	for _, e := range B.Obs.RawData.Effects {
 		for _, eid := range eids {
 			if e.EffectId == eid {
 				for _, p2 := range e.Pos {
 					p := point.Pt2(p2)
-					gap := upos.Dist(p) - float64(Effects[eid].Radius+u.Radius) - 0.1
+					gap := upos.Dist(p) - float64(B.U.Effects[eid].Radius+u.Radius) - 0.1
 					if gap < 0 {
 						pos := upos.Towards(p, gap-1)
-						if u.IsFlying || u.Bot.Grid.IsPathable(pos) {
+						if u.IsFlying || B.Grid.IsPathable(pos) {
 							return pos, false
 						}
 					}
@@ -873,14 +855,14 @@ func (u *Unit) AttackMove(target *Unit) {
 	}
 	pos, safe := u.EvadeEffectsPos(npos, true, effects...)
 	if safe {
-		enemies := u.Bot.Enemies.AllReady
+		enemies := B.Enemies.AllReady
 		if u.IsFlying {
 			pos, safe = u.AirEvade(enemies, 2, npos)
 		} else {
 			pos, safe = u.GroundEvade(enemies, 2, npos)
 		}
 		if !safe {
-			friendsDPS := u.Bot.Units.My.All().CloserThan(7, u).Sum(CmpGroundDPS)
+			friendsDPS := B.Units.My.All().CloserThan(7, u).Sum(CmpGroundDPS)
 			enemiesDPS := enemies.CloserThan(7, target).Sum(CmpGroundDPS)
 			if friendsDPS >= enemiesDPS {
 				safe = true
@@ -899,7 +881,7 @@ func (u *Unit) AttackMove(target *Unit) {
 }
 
 func (u *Unit) AttackCustom(attackFunc AttackFunc, moveFunc MoveFunc, targetsGroups ...Units) {
-	if UnitsOrders[u.Tag].Loop+u.Bot.FramesPerOrder > u.Bot.Loop {
+	if B.U.UnitsOrders[u.Tag].Loop+B.FramesPerOrder > B.Loop {
 		return // Not more than FramesPerOrder
 	}
 

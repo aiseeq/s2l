@@ -265,7 +265,7 @@ func (b *Bot) RenewPaths() {
 		}
 		for _, u := range b.Enemies.AllReady {
 			pos := u.Point().Floor()
-			ps := GroundAttackCircle[u.UnitType]
+			ps := b.U.GroundAttackCircle[u.UnitType]
 			for _, p := range ps {
 				safeGrid.SetPathable(pos+p, false)
 				if reapersExists {

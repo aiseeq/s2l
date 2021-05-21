@@ -51,7 +51,7 @@ func (as Aliases) Add(td *api.UnitTypeData) {
 	aliases.Add(td.UnitId)
 	for _, ta := range td.TechAlias {
 		aliases.Add(ta)
-		aliases.Add(UnitAliases[ta]...)
+		aliases.Add(B.U.UnitAliases[ta]...)
 	}
 	if td.UnitAlias != 0 {
 		aliases.Add(td.UnitAlias)
@@ -67,7 +67,7 @@ func (as Aliases) Add(td *api.UnitTypeData) {
 func (as Aliases) For(ut api.UnitTypeID) UnitTypes {
 	aliases, ok := as[ut]
 	if !ok {
-		log.Warningf("No alias for %s", Types[ut].Name)
+		log.Warningf("No alias for %s", B.U.Types[ut].Name)
 		aliases = UnitTypes{ut}
 	}
 	return aliases
@@ -128,14 +128,14 @@ func (ad AttackDelays) IsCool(ut api.UnitTypeID, cooldown float32, frames int) b
 }
 
 func (ad AttackDelays) UnitIsCool(u *Unit) bool {
-	return ad.IsCool(u.UnitType, u.WeaponCooldown, u.Bot.FramesPerOrder)
+	return ad.IsCool(u.UnitType, u.WeaponCooldown, B.FramesPerOrder)
 }
 
 func (tt *TagsByTypes) Add(ut api.UnitTypeID, tag api.UnitTag) {
 	if *tt == nil {
 		*tt = TagsByTypes{}
 	}
-	ut = UnitAliases.Min(ut)
+	ut = B.U.UnitAliases.Min(ut)
 	if (*tt)[ut] == nil {
 		(*tt)[ut] = TagsMap{}
 	}
@@ -143,14 +143,14 @@ func (tt *TagsByTypes) Add(ut api.UnitTypeID, tag api.UnitTag) {
 }
 
 func (tt TagsByTypes) Len(ut api.UnitTypeID) int {
-	return len(tt[UnitAliases.Min(ut)])
+	return len(tt[B.U.UnitAliases.Min(ut)])
 }
 
 func (tt TagsByTypes) Score(uts ...api.UnitTypeID) float64 {
 	score := 0.0
 	for _, ut := range uts {
-		ut = UnitAliases.Min(ut)
-		score += float64(len(tt[ut])) * float64(Types[ut].MineralCost+Types[ut].VespeneCost)
+		ut = B.U.UnitAliases.Min(ut)
+		score += float64(len(tt[ut])) * float64(B.U.Types[ut].MineralCost+B.U.Types[ut].VespeneCost)
 	}
 	return score
 }

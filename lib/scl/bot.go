@@ -52,6 +52,23 @@ type Bot struct {
 		Visible  Units
 		Clusters []*Cluster
 	}
+	U struct { // Moved from globals in units
+		Types              []*api.UnitTypeData
+		GroundAttackCircle map[api.UnitTypeID]point.Points
+		Upgrades           []*api.UpgradeData
+		Effects            []*api.EffectData
+		UnitCost           map[api.UnitTypeID]Cost
+		AbilityCost        map[api.AbilityID]Cost
+		AbilityUnit        map[api.AbilityID]api.UnitTypeID
+		UnitAbility        map[api.UnitTypeID]api.AbilityID
+		UnitAliases        Aliases
+		UnitsOrders        map[api.UnitTag]UnitOrder
+
+		Attributes  map[api.UnitTypeID]map[api.Attribute]bool
+		Weapons     map[api.UnitTypeID]Weapon
+		HitsHistory map[api.UnitTag][]int
+		PrevUnits   map[api.UnitTag]*Unit
+	}
 
 	Grid           *grid.Grid
 	SafeGrid       *grid.Grid
@@ -85,6 +102,8 @@ type Bot struct {
 
 	UnitCreatedCallback func(unit *Unit)
 }
+
+var B *Bot // Pointer to the last created bot. It should be the only global here
 
 const FPS = 22.4
 const HitHistoryLoops = 56 // 2.5 sec
@@ -134,35 +153,36 @@ func New(client *client.Client, ucc func(unit *Unit)) *Bot {
 	b.Client = client
 	b.UnitCreatedCallback = ucc
 	b.Cmds = &CommandsStack{}
+	B = &b
 
 	return &b
 }
 
 func (b *Bot) Init(renewPaths bool) {
-	// Empty globals. Todo: move into obj!!!
-	Types = []*api.UnitTypeData{}
-	GroundAttackCircle = map[api.UnitTypeID]point.Points{}
-	Upgrades = []*api.UpgradeData{}
-	Effects = []*api.EffectData{}
-	UnitCost = map[api.UnitTypeID]Cost{}
-	AbilityCost = map[api.AbilityID]Cost{}
-	AbilityUnit = map[api.AbilityID]api.UnitTypeID{}
-	UnitAbility = map[api.UnitTypeID]api.AbilityID{}
-	UnitAliases = Aliases{}
-	UnitsOrders = map[api.UnitTag]UnitOrder{}
+	// Init unit data
+	b.U.Types = []*api.UnitTypeData{}
+	b.U.GroundAttackCircle = map[api.UnitTypeID]point.Points{}
+	b.U.Upgrades = []*api.UpgradeData{}
+	b.U.Effects = []*api.EffectData{}
+	b.U.UnitCost = map[api.UnitTypeID]Cost{}
+	b.U.AbilityCost = map[api.AbilityID]Cost{}
+	b.U.AbilityUnit = map[api.AbilityID]api.UnitTypeID{}
+	b.U.UnitAbility = map[api.UnitTypeID]api.AbilityID{}
+	b.U.UnitAliases = Aliases{}
+	b.U.UnitsOrders = map[api.UnitTag]UnitOrder{}
 
-	attributes = map[api.UnitTypeID]map[api.Attribute]bool{}
-	weapons = map[api.UnitTypeID]Weapon{}
-	hitsHistory = map[api.UnitTag][]int{}
-	prevUnits = map[api.UnitTag]*Unit{}
+	b.U.Attributes = map[api.UnitTypeID]map[api.Attribute]bool{}
+	b.U.Weapons = map[api.UnitTypeID]Weapon{}
+	b.U.HitsHistory = map[api.UnitTag][]int{}
+	b.U.PrevUnits = map[api.UnitTag]*Unit{}
 
 	b.UpdateObservation()
 	b.UpdateData()
 	b.UpdateInfo()
 
-	InitUnits(b.Data.Units)
-	InitUpgrades(b.Data.Upgrades)
-	InitEffects(b.Data.Effects)
+	b.InitUnits(b.Data.Units)
+	b.InitUpgrades(b.Data.Upgrades)
+	b.InitEffects(b.Data.Effects)
 	b.ParseUnits()
 	b.ParseOrders()
 	b.InitLocations()
@@ -176,7 +196,7 @@ func (b *Bot) Init(renewPaths bool) {
 }
 
 func (b *Bot) CanBuy(ability api.AbilityID) bool {
-	cost, ok := AbilityCost[ability]
+	cost, ok := b.U.AbilityCost[ability]
 	if !ok {
 		log.Warning("no cost for ability: ", ability)
 	}
@@ -186,7 +206,7 @@ func (b *Bot) CanBuy(ability api.AbilityID) bool {
 }
 
 func (b *Bot) DeductResources(aid api.AbilityID) {
-	cost := AbilityCost[aid]
+	cost := b.U.AbilityCost[aid]
 	b.Minerals -= cost.Minerals
 	b.Vespene -= cost.Vespene
 	if cost.Food > 0 {
@@ -196,11 +216,11 @@ func (b *Bot) DeductResources(aid api.AbilityID) {
 }
 
 func (b *Bot) Pending(aid api.AbilityID) int {
-	return b.Units.My[AbilityUnit[aid]].Len() + b.Orders[aid]
+	return b.Units.My[b.U.AbilityUnit[aid]].Len() + b.Orders[aid]
 }
 
 func (b *Bot) PendingAliases(aid api.AbilityID) int {
-	return b.Units.My.OfType(UnitAliases.For(AbilityUnit[aid])...).Len() + b.Orders[aid]
+	return b.Units.My.OfType(b.U.UnitAliases.For(b.U.AbilityUnit[aid])...).Len() + b.Orders[aid]
 }
 
 func (b *Bot) CanBuild(aid api.AbilityID, limit, active int) bool {
@@ -209,7 +229,7 @@ func (b *Bot) CanBuild(aid api.AbilityID, limit, active int) bool {
 
 func (b *Bot) AddToCluster(enemy *Unit, c *Cluster) {
 	c.Units[enemy] = struct{}{}
-	c.Food += float64(Types[enemy.UnitType].FoodRequired)
+	c.Food += float64(b.U.Types[enemy.UnitType].FoodRequired)
 	enemy.Cluster = c
 
 	for _, u := range enemy.Neighbours {
@@ -410,9 +430,9 @@ func (b *Bot) ParseObservation() {
 	b.MineralsPerFrame = float64(b.Obs.Score.ScoreDetails.CollectionRateMinerals) / 60 / 22.4
 	b.VespenePerFrame = float64(b.Obs.Score.ScoreDetails.CollectionRateVespene) / 60 / 22.4
 	b.Upgrades = map[api.AbilityID]bool{}
-	if Upgrades != nil {
+	if b.U.Upgrades != nil {
 		for _, uid := range b.Obs.RawData.Player.UpgradeIds {
-			b.Upgrades[Upgrades[uid].AbilityId] = true
+			b.Upgrades[b.U.Upgrades[uid].AbilityId] = true
 		}
 	}
 }
@@ -423,7 +443,7 @@ func (b *Bot) DetectEnemyRace() {
 		b.EnemyRace = b.Info.PlayerInfo[enemyId-1].RaceRequested
 	} else if b.EnemyRace == api.Race_Random && b.Units.Enemy.Exists() {
 		unit := b.Enemies.Visible.First()
-		b.EnemyRace = Types[unit.UnitType].Race
+		b.EnemyRace = b.U.Types[unit.UnitType].Race
 	}
 }
 

@@ -105,8 +105,8 @@ func (cs *CommandsStack) ProcessSimple(actions *actions.Actions, simple map[api.
 			us = units
 			for _, unit := range units {
 				// But save history for the last action
-				UnitsOrders[unit.Tag] = UnitOrder{
-					Loop:    unit.Bot.Loop,
+				B.U.UnitsOrders[unit.Tag] = UnitOrder{
+					Loop:    B.Loop,
 					Ability: ability,
 				}
 			}
@@ -115,10 +115,10 @@ func (cs *CommandsStack) ProcessSimple(actions *actions.Actions, simple map[api.
 				// Check unit's current state and last order
 				if unit.SpamCmds ||
 					(unit.TargetAbility() != ability &&
-						(unit.IsIdle() || UnitsOrders[unit.Tag].Ability != ability)) {
+						(unit.IsIdle() || B.U.UnitsOrders[unit.Tag].Ability != ability)) {
 					us.Add(unit)
-					UnitsOrders[unit.Tag] = UnitOrder{
-						Loop:    unit.Bot.Loop,
+					B.U.UnitsOrders[unit.Tag] = UnitOrder{
+						Loop:    B.Loop,
 						Ability: ability,
 					}
 				}
@@ -146,8 +146,8 @@ func (cs *CommandsStack) ProcessPos(actions *actions.Actions, posList map[api.Ab
 				us = units
 				for _, unit := range units {
 					// But save history for the last action
-					UnitsOrders[unit.Tag] = UnitOrder{
-						Loop:    unit.Bot.Loop,
+					B.U.UnitsOrders[unit.Tag] = UnitOrder{
+						Loop:    B.Loop,
 						Ability: ability,
 						Pos:     position,
 					}
@@ -163,11 +163,11 @@ func (cs *CommandsStack) ProcessPos(actions *actions.Actions, posList map[api.Ab
 						((unit.TargetAbility() != ability ||
 							(unit.TargetPos()-position).Len() > samePoint) &&
 							(unit.IsIdle() ||
-								UnitsOrders[unit.Tag].Ability != ability ||
-								UnitsOrders[unit.Tag].Pos != position)) {
+								B.U.UnitsOrders[unit.Tag].Ability != ability ||
+								B.U.UnitsOrders[unit.Tag].Pos != position)) {
 						us.Add(unit)
-						UnitsOrders[unit.Tag] = UnitOrder{
-							Loop:    unit.Bot.Loop,
+						B.U.UnitsOrders[unit.Tag] = UnitOrder{
+							Loop:    B.Loop,
 							Ability: ability,
 							Pos:     position,
 						}
@@ -199,8 +199,8 @@ func (cs *CommandsStack) ProcessTag(actions *actions.Actions, tagList map[api.Ab
 				us = units
 				for _, unit := range units {
 					// But save history for the last action
-					UnitsOrders[unit.Tag] = UnitOrder{
-						Loop:    unit.Bot.Loop,
+					B.U.UnitsOrders[unit.Tag] = UnitOrder{
+						Loop:    B.Loop,
 						Ability: ability,
 						Tag:     tag,
 					}
@@ -212,11 +212,11 @@ func (cs *CommandsStack) ProcessTag(actions *actions.Actions, tagList map[api.Ab
 						((unit.TargetAbility() != ability ||
 							unit.TargetTag() != tag) &&
 							(unit.IsIdle() ||
-								UnitsOrders[unit.Tag].Ability != ability ||
-								UnitsOrders[unit.Tag].Tag != tag)) {
+								B.U.UnitsOrders[unit.Tag].Ability != ability ||
+								B.U.UnitsOrders[unit.Tag].Tag != tag)) {
 						us.Add(unit)
-						UnitsOrders[unit.Tag] = UnitOrder{
-							Loop:    unit.Bot.Loop,
+						B.U.UnitsOrders[unit.Tag] = UnitOrder{
+							Loop:    B.Loop,
 							Ability: ability,
 							Tag:     tag,
 						}
@@ -253,67 +253,67 @@ func (cs *CommandsStack) Process(actions *actions.Actions) {
 }
 
 func (u *Unit) Command(ability api.AbilityID) {
-	u.Bot.Cmds.AddSimple(ability, false, u)
+	B.Cmds.AddSimple(ability, false, u)
 }
 
 func (u *Unit) CommandQueue(ability api.AbilityID) {
-	u.Bot.Cmds.AddSimple(ability, true, u)
+	B.Cmds.AddSimple(ability, true, u)
 }
 
 func (u *Unit) CommandPos(ability api.AbilityID, target point.Pointer) {
-	u.Bot.Cmds.AddPos(ability, target.Point(), false, u)
+	B.Cmds.AddPos(ability, target.Point(), false, u)
 }
 
 func (u *Unit) CommandPosQueue(ability api.AbilityID, target point.Pointer) {
-	u.Bot.Cmds.AddPos(ability, target.Point(), true, u)
+	B.Cmds.AddPos(ability, target.Point(), true, u)
 }
 
 func (u *Unit) CommandTag(ability api.AbilityID, target api.UnitTag) {
-	u.Bot.Cmds.AddTag(ability, target, false, u)
+	B.Cmds.AddTag(ability, target, false, u)
 }
 
 func (u *Unit) CommandTagQueue(ability api.AbilityID, target api.UnitTag) {
-	u.Bot.Cmds.AddTag(ability, target, true, u)
+	B.Cmds.AddTag(ability, target, true, u)
 }
 
 func (us Units) Command(ability api.AbilityID) {
 	if us.Empty() {
 		return
 	}
-	us[0].Bot.Cmds.AddSimple(ability, false, us...)
+	B.Cmds.AddSimple(ability, false, us...)
 }
 
 func (us Units) CommandQueue(ability api.AbilityID) {
 	if us.Empty() {
 		return
 	}
-	us[0].Bot.Cmds.AddSimple(ability, true, us...)
+	B.Cmds.AddSimple(ability, true, us...)
 }
 
 func (us Units) CommandPos(ability api.AbilityID, target point.Pointer) {
 	if us.Empty() {
 		return
 	}
-	us[0].Bot.Cmds.AddPos(ability, target.Point(), false, us...)
+	B.Cmds.AddPos(ability, target.Point(), false, us...)
 }
 
 func (us Units) CommandPosQueue(ability api.AbilityID, target point.Pointer) {
 	if us.Empty() {
 		return
 	}
-	us[0].Bot.Cmds.AddPos(ability, target.Point(), true, us...)
+	B.Cmds.AddPos(ability, target.Point(), true, us...)
 }
 
 func (us Units) CommandTag(ability api.AbilityID, target api.UnitTag) {
 	if us.Empty() {
 		return
 	}
-	us[0].Bot.Cmds.AddTag(ability, target, false, us...)
+	B.Cmds.AddTag(ability, target, false, us...)
 }
 
 func (us Units) CommandTagQueue(ability api.AbilityID, target api.UnitTag) {
 	if us.Empty() {
 		return
 	}
-	us[0].Bot.Cmds.AddTag(ability, target, true, us...)
+	B.Cmds.AddTag(ability, target, true, us...)
 }

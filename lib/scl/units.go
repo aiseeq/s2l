@@ -253,7 +253,7 @@ func CmpGroundDamage(unit *Unit) float64 { return unit.GroundDamage() }
 func CmpGroundDPS(unit *Unit) float64    { return unit.GroundDPS() }
 func CmpGroundScore(unit *Unit) float64  { return unit.GroundDPS() * unit.Hits }
 func CmpFood(unit *Unit) float64 {
-	if req := Types[unit.UnitType].FoodRequired; req > 0 {
+	if req := B.U.Types[unit.UnitType].FoodRequired; req > 0 {
 		return float64(req)
 	}
 	return 0
