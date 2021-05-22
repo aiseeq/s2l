@@ -61,6 +61,12 @@ func (b *Bot) DebugAddUnits(unitType api.UnitTypeID, owner api.PlayerID, pos poi
 			}}})
 }
 
+func (b *Bot) DebugKillUnits(tags ...api.UnitTag) {
+	b.DebugAdd(&api.DebugCommand{
+		Command: &api.DebugCommand_KillUnit{
+			KillUnit: &api.DebugKillUnit{Tag: tags}}})
+}
+
 func (b *Bot) DebugMap() {
 	var boxes []*api.DebugBox
 
