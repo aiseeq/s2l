@@ -23,8 +23,8 @@ var (
 		Score:               true,
 		ShowBurrowedShadows: true,
 		ShowCloaked:         true,
-		ShowPlaceholders:    true, // !!! ??? Building that hasn't started construction?
-		RawAffectsSelection: true, // !!! Check if it's ok
+		// ShowPlaceholders:    true, // Building that hasn't started construction?
+		// RawAffectsSelection: true,
 	}
 	processRealtime          = false
 	processConnectTimeout, _ = time.ParseDuration("2m")

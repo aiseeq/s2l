@@ -241,6 +241,14 @@ func (us Units) Tags() []api.UnitTag {
 	return uTags
 }
 
+func (us Units) TagsMap() map[api.UnitTag]bool {
+	uTags := map[api.UnitTag]bool{}
+	for _, unit := range us {
+		uTags[unit.Tag] = true
+	}
+	return uTags
+}
+
 func (us Units) Attack(targetsGroups ...Units) {
 	for _, u := range us {
 		u.Attack(targetsGroups...)

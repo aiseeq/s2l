@@ -83,7 +83,7 @@ func InitMinerals() {
 	// B.DebugSend()
 }
 
-func addMinerToMineral(miner, mf, cc *scl.Unit) {
+func addMinerToMineral(miner, mf *scl.Unit) {
 	miner.CommandTag(ability.Smart, mf.Tag)
 	MineralForMiner[miner.Tag] = mf.Tag
 }
@@ -114,7 +114,7 @@ func ManageNewMiner() {
 		}
 		if minersOnCrystal == 0 {
 			// We found free crystal, use it
-			addMinerToMineral(miner, mf, cc)
+			addMinerToMineral(miner, mf)
 			return
 		}
 		if minersOnCrystal == 1 {
@@ -125,7 +125,7 @@ func ManageNewMiner() {
 	if bestMfs.Exists() {
 		// Send to closest mineral
 		mf := bestMfs.ClosestTo(cc)
-		addMinerToMineral(miner, mf, cc)
+		addMinerToMineral(miner, mf)
 		return
 	}
 	// All minerals are saturated
@@ -143,7 +143,7 @@ func ManageNewMiner() {
 	if bestMfs.Exists() {
 		// Send to farest mineral
 		mf := bestMfs.FurthestTo(cc)
-		addMinerToMineral(miner, mf, cc)
+		addMinerToMineral(miner, mf)
 		return
 	}
 	log.Error("Should be unreachable")
@@ -360,6 +360,15 @@ func SimpleLogic() {
 	CheckTime()
 }
 
+func MiningLib() {
+	if B.Loop >= 102 && B.Loop < 105 {
+		B.RedistributeWorkersToRefineryIfNeeded(B.Units.My[terran.Refinery].First(), B.Units.My[terran.SCV], 3)
+	}
+	B.HandleMiners(B.Units.My[terran.SCV], B.Units.My[terran.CommandCenter], 1)
+	BuildSCVs()
+	CheckTime()
+}
+
 func Step() {
 	B.Cmds = &scl.CommandsStack{}
 	B.Loop = int(B.Obs.GameLoop)
@@ -376,13 +385,15 @@ func Step() {
 	// SimpleLogic() // 1705
 	// SplitAndForget() // 1745 - unlim, 1365 - lim12, 1675 - lim16
 	// SplitAndManage() // 1750
-	MicroManage() // 1925 - unlim, 1510 - lim12, 1855 - lim16
+	// MicroManage() // 1925 - unlim, 1510 - lim12, 1855 - lim16
 
 	// SimpleGas() // No difference if gas is saturated
 	// ManageGas()
 
 	// SimpleMule()
 	// ManagedMule()
+
+	MiningLib()
 
 	B.Cmds.Process(&B.Actions)
 	if len(B.Actions) > 0 {
@@ -413,6 +424,7 @@ const workersLimit = 22
 const repeats = 10
 
 func main() {
+	log.SetConsoleLevel(log.L_debug) // L_info L_debug
 	times := map[string][]float64{}
 	var cfg *client.GameConfig
 	for iter := 0; iter < repeats; iter++ {

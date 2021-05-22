@@ -38,7 +38,7 @@ type Bot struct {
 		My    Ramp
 		Enemy Ramp
 	}
-	Units struct {
+	Units struct { // todo: ByTag
 		My       UnitsByTypes
 		Enemy    UnitsByTypes
 		AllEnemy UnitsByTypes
@@ -68,6 +68,13 @@ type Bot struct {
 		Weapons     map[api.UnitTypeID]Weapon
 		HitsHistory map[api.UnitTag][]int
 		PrevUnits   map[api.UnitTag]*Unit
+	}
+	Miners struct {
+		CCForMiner       map[api.UnitTag]api.UnitTag
+		GasForMiner      map[api.UnitTag]api.UnitTag
+		MineralForMiner  map[api.UnitTag]api.UnitTag
+		TargetForMineral map[api.UnitTag]point.Point
+		LastSeen         map[api.UnitTag]int
 	}
 
 	Grid           *grid.Grid
