@@ -67,6 +67,16 @@ func (b *Bot) DebugKillUnits(tags ...api.UnitTag) {
 			KillUnit: &api.DebugKillUnit{Tag: tags}}})
 }
 
+func (b *Bot) DebugUnitValue(tag api.UnitTag, value api.DebugSetUnitValue_UnitValue, qty float32) {
+	b.DebugAdd(&api.DebugCommand{
+		Command: &api.DebugCommand_UnitValue{
+			UnitValue: &api.DebugSetUnitValue{
+				UnitValue: value,
+				Value:     qty,
+				UnitTag:   tag,
+			}}})
+}
+
 func (b *Bot) DebugMap() {
 	var boxes []*api.DebugBox
 

@@ -13,21 +13,19 @@ import (
 )
 
 var B *scl.Bot
-var MinersByCC map[api.UnitTag]map[api.UnitTag]struct{}
+
+// var CCForMiner map[api.UnitTag]api.UnitTag
 var GasForMiner map[api.UnitTag]api.UnitTag
 var MineralForMiner map[api.UnitTag]api.UnitTag
 var TargetForMineral map[api.UnitTag]point.Point
 
 func SplitMinerals() {
 	cc := B.Units.My[terran.CommandCenter].First()
-	MinersByCC[cc.Tag] = map[api.UnitTag]struct{}{}
-
 	miners := B.Units.My[terran.SCV]
 	mfs := B.Units.Minerals.All().CloserThan(scl.ResourceSpreadDistance, cc)
 	for _, mf := range append(mfs, mfs...) {
 		miner := miners.ClosestTo(mf)
 		miner.CommandTag(ability.Smart, mf.Tag)
-		MinersByCC[cc.Tag][miner.Tag] = struct{}{}
 		MineralForMiner[miner.Tag] = mf.Tag
 		miners.Remove(miner)
 		if miners.Empty() {
@@ -87,71 +85,68 @@ func InitMinerals() {
 
 func addMinerToMineral(miner, mf, cc *scl.Unit) {
 	miner.CommandTag(ability.Smart, mf.Tag)
-	MinersByCC[cc.Tag][miner.Tag] = struct{}{}
 	MineralForMiner[miner.Tag] = mf.Tag
 }
 
 func ManageNewMiner() {
 	cc := B.Units.My[terran.CommandCenter].First()
 	miners := B.Units.My[terran.SCV]
-	if len(miners) > len(MinersByCC[cc.Tag]) {
-		// New SCV found
-		var miner *scl.Unit
-		for _, scv := range miners {
-			if _, ok := MinersByCC[cc.Tag][scv.Tag]; !ok {
-				miner = scv
-			}
-		}
-		if miner == nil {
-			log.Error("Wat?")
-			return
-		}
 
-		bestMfs := scl.Units{}
-		mfs := B.Units.Minerals.All().CloserThan(scl.ResourceSpreadDistance, cc)
-		for _, mf := range mfs {
-			minersOnCrystal := 0
-			for _, scv := range miners {
-				if MineralForMiner[scv.Tag] == mf.Tag {
-					minersOnCrystal++
-				}
-			}
-			if minersOnCrystal == 0 {
-				// We found free crystal, use it
-				addMinerToMineral(miner, mf, cc)
-				return
-			}
-			if minersOnCrystal == 1 {
-				// Non-saturated crystal
-				bestMfs.Add(mf)
-			}
+	var miner *scl.Unit
+	for _, scv := range miners {
+		if MineralForMiner[scv.Tag] == 0 {
+			miner = scv // New SCV found
+			break
 		}
-		if bestMfs.Exists() {
-			// Send to closest mineral
-			mf := bestMfs.ClosestTo(cc)
-			addMinerToMineral(miner, mf, cc)
-			return
-		}
-		// All minerals are saturated
-		for _, mf := range mfs {
-			minersOnCrystal := 0
-			for _, scv := range miners {
-				if MineralForMiner[scv.Tag] == mf.Tag {
-					minersOnCrystal++
-				}
-			}
-			if minersOnCrystal == 2 {
-				bestMfs.Add(mf)
-			}
-		}
-		if bestMfs.Exists() {
-			// Send to farest mineral
-			mf := bestMfs.FurthestTo(cc)
-			addMinerToMineral(miner, mf, cc)
-			return
-		}
-		log.Error("Should be unreachable")
 	}
+	if miner == nil {
+		return
+	}
+
+	bestMfs := scl.Units{}
+	mfs := B.Units.Minerals.All().CloserThan(scl.ResourceSpreadDistance, cc)
+	for _, mf := range mfs {
+		minersOnCrystal := 0
+		for _, scv := range miners {
+			if MineralForMiner[scv.Tag] == mf.Tag {
+				minersOnCrystal++
+			}
+		}
+		if minersOnCrystal == 0 {
+			// We found free crystal, use it
+			addMinerToMineral(miner, mf, cc)
+			return
+		}
+		if minersOnCrystal == 1 {
+			// Non-saturated crystal
+			bestMfs.Add(mf)
+		}
+	}
+	if bestMfs.Exists() {
+		// Send to closest mineral
+		mf := bestMfs.ClosestTo(cc)
+		addMinerToMineral(miner, mf, cc)
+		return
+	}
+	// All minerals are saturated
+	for _, mf := range mfs {
+		minersOnCrystal := 0
+		for _, scv := range miners {
+			if MineralForMiner[scv.Tag] == mf.Tag {
+				minersOnCrystal++
+			}
+		}
+		if minersOnCrystal == 2 {
+			bestMfs.Add(mf)
+		}
+	}
+	if bestMfs.Exists() {
+		// Send to farest mineral
+		mf := bestMfs.FurthestTo(cc)
+		addMinerToMineral(miner, mf, cc)
+		return
+	}
+	log.Error("Should be unreachable")
 }
 
 func MicroMinerals() {
@@ -210,12 +205,8 @@ nextRef:
 }
 
 func NewScvToGas() {
-	cc := B.Units.My[terran.CommandCenter].First()
 	refs := B.Units.My[terran.Refinery]
 	miners := B.Units.My[terran.SCV]
-	if len(miners) == len(MinersByCC[cc.Tag]) {
-		return
-	}
 	for _, miner := range miners {
 		if MineralForMiner[miner.Tag] != 0 {
 			continue
@@ -250,6 +241,51 @@ func MicroGas() {
 			miner.CommandTagQueue(ability.Smart, cc.Tag)
 		}
 	}
+}
+
+func KillCsvsAndUpgradeCC() {
+	for _, miner := range B.Units.My[terran.SCV] {
+		B.DebugKillUnits(miner.Tag)
+	}
+	cc := B.Units.My[terran.CommandCenter].First()
+	B.DebugKillUnits(cc.Tag)
+	// B.DebugAddUnits(terran.MULE, B.Obs.PlayerCommon.PlayerId, cc.Towards(B.Locs.MapCenter, -3), 4)
+	B.DebugAddUnits(terran.OrbitalCommand, B.Obs.PlayerCommon.PlayerId, point.Pt3(cc.Pos), 1)
+	B.DebugSend()
+}
+
+func GiveCCEnergy() {
+	log.Info("ok")
+	cc := B.Units.My[terran.OrbitalCommand].First()
+	B.DebugUnitValue(cc.Tag, api.DebugSetUnitValue_Energy, 200)
+	B.DebugSend()
+}
+
+func CallMule() {
+	cc := B.Units.My[terran.OrbitalCommand].First()
+	mf := B.Units.Minerals.All().ClosestTo(cc)
+	cc.CommandPosQueue(ability.Effect_CalldownMULE, mf.Towards(cc, 0.5))
+}
+
+func ManagedMule() {
+	// todo
+}
+
+func SimpleMule() {
+	if B.Loop == 0 {
+		KillCsvsAndUpgradeCC()
+	}
+	if B.Loop >= 6 && B.Loop < 9 {
+		GiveCCEnergy()
+	}
+	if B.Loop >= 9 && B.Units.My[terran.OrbitalCommand].First().Energy >= 50 {
+		CallMule()
+	}
+	if mules := B.Units.My[terran.MULE].Filter(scl.Idle); mules.Exists() {
+		mf := B.Units.Minerals.All().ClosestTo(mules.First())
+		mules.CommandTag(ability.Smart, mf.Tag)
+	}
+	CheckTime()
 }
 
 func ManageGas() {
@@ -340,10 +376,13 @@ func Step() {
 	// SimpleLogic() // 1705
 	// SplitAndForget() // 1745 - unlim, 1365 - lim12, 1675 - lim16
 	// SplitAndManage() // 1750
-	// MicroManage() // 1925 - unlim, 1510 - lim12, 1855 - lim16
+	MicroManage() // 1925 - unlim, 1510 - lim12, 1855 - lim16
 
 	// SimpleGas() // No difference if gas is saturated
-	ManageGas()
+	// ManageGas()
+
+	// SimpleMule()
+	// ManagedMule()
 
 	B.Cmds.Process(&B.Actions)
 	if len(B.Actions) > 0 {
@@ -378,7 +417,7 @@ func main() {
 	var cfg *client.GameConfig
 	for iter := 0; iter < repeats; iter++ {
 		for _, mapName := range client.Maps2021season1 { // []string{"IceandChrome506"}
-			// client.SetRealtime()
+			client.SetRealtime()
 			if cfg == nil {
 				client.SetMap(mapName + ".SC2Map")
 				bot := client.NewParticipant(api.Race_Terran, "MiningTest")
@@ -395,7 +434,7 @@ func main() {
 			B.Init(false) // we don't need to renew paths here
 
 			MineralForMiner = map[api.UnitTag]api.UnitTag{}
-			MinersByCC = map[api.UnitTag]map[api.UnitTag]struct{}{}
+			// CCForMiner = map[api.UnitTag]api.UnitTag{}
 
 			AddBuildings() // To prevent supply block
 
@@ -412,8 +451,8 @@ func main() {
 
 				B.UpdateObservation()
 			}
-			// times[mapName] = append(times[mapName], float64(B.Obs.Score.ScoreDetails.CollectedMinerals))
-			times[mapName] = append(times[mapName], float64(B.Obs.Score.ScoreDetails.CollectedVespene))
+			times[mapName] = append(times[mapName], float64(B.Obs.Score.ScoreDetails.CollectedMinerals))
+			// times[mapName] = append(times[mapName], float64(B.Obs.Score.ScoreDetails.CollectedVespene))
 		}
 	}
 	for mapName, res := range times {
