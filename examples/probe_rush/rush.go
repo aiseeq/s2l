@@ -13,7 +13,8 @@ func main() {
 	// Play a random map against a medium difficulty computer
 	bot := client.NewParticipant(api.Race_Protoss, "ProbeRush")
 	cpu := client.NewComputer(api.Race_Protoss, api.Difficulty_Medium, api.AIBuild_RandomBuild)
-	c := client.LaunchAndJoin(bot, cpu)
+	cfg := client.LaunchAndJoin(bot, cpu)
+	c := cfg.Client
 
 	gameInfo, err := c.GameInfo()
 	if err != nil {

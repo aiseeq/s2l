@@ -179,12 +179,8 @@ func (a Point) IsFurtherThan(dist float64, ptr Pointer) bool {
 	return a.Dist2(b) > dist*dist
 }
 
-func (a Point) S2x2Fix() Point {
-	return a
-}
-
 func (a Point) CellCenter() Point {
-	return a
+	return a + 0.5 + 0.5i
 }
 
 func (ps *Points) Add(p ...Point) {

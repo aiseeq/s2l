@@ -233,6 +233,28 @@ func (us Units) Center() point.Point {
 	return points.Center()
 }
 
+// Coordinates of rectangle that fits all units
+func (us Units) Rekt() point.Points {
+	min := point.Pt(math.MaxFloat64, math.MaxFloat64)
+	max := point.Pt(-math.MaxFloat64, -math.MaxFloat64)
+	for _, unit := range us {
+		p := unit.Point() // maybe there is a better way?
+		if p.X() < min.X() {
+			min = point.Pt(p.X(), min.Y())
+		}
+		if p.Y() < min.Y() {
+			min = point.Pt(min.X(), p.Y())
+		}
+		if p.X() > max.X() {
+			max = point.Pt(p.X(), max.Y())
+		}
+		if p.Y() > max.Y() {
+			max = point.Pt(max.X(), p.Y())
+		}
+	}
+	return point.Points{min, max}
+}
+
 func (us Units) Tags() []api.UnitTag {
 	var uTags []api.UnitTag
 	for _, unit := range us {

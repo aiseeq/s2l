@@ -373,8 +373,13 @@ func (b *Bot) ParseUnits() {
 				case u.Radius <= 1:
 					// Nothing
 				case u.Radius >= 1.125 && u.Radius <= 1.25:
-					size = S2x2
-					pos -= point.Pt(1, 1)
+					if u.IsMineral() {
+						size = S2x1
+						pos -= 1
+					} else {
+						size = S2x2
+						pos -= 1 + 1i
+					}
 					/*case u.Radius > 1.25 && u.Radius < 2.75:
 						size = S3x3
 					case u.Radius == 2.75:

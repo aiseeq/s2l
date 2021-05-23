@@ -20,7 +20,8 @@ type CheckMap int
 type PathableCells int
 
 const (
-	S2x2 BuildingSize = iota + 1
+	S2x1 BuildingSize = iota + 1
+	S2x2
 	S3x3
 	S5x3
 	S5x5
@@ -76,6 +77,8 @@ func (b *Bot) CheckPoints(ps point.Points, check CheckMap) bool {
 func (b *Bot) GetBuildingPoints(ptr point.Pointer, size BuildingSize) point.Points {
 	pos := ptr.Point().Floor()
 	switch size {
+	case S2x1:
+		return point.Points{pos, pos + 1}
 	case S2x2:
 		return point.Points{pos, pos + 1i, pos + 1 + 1i, pos + 1}
 	case S3x3:
@@ -286,7 +289,7 @@ func (b *Bot) InitLocations() {
 	b.Locs.MapCenter = (point.PtI(pa.P0) + point.PtI(pa.P1)).Mul(0.5)
 
 	// My CC is on start position
-	b.Locs.MyStart = b.Units.My.OfType(terran.CommandCenter, zerg.Hatchery, protoss.Nexus).First().Point()
+	b.Locs.MyStart = b.Units.My.OfType(terran.CommandCenter, zerg.Hatchery, protoss.Nexus).First().Point().Floor()
 	esl := b.Info.StartRaw.StartLocations
 	b.Locs.EnemyStart = point.Pt2(esl[0])
 	eslps := point.Points{}
@@ -330,7 +333,9 @@ func (b *Bot) FindExpansions() {
 	for _, uc := range b.CalculateExpansionLocations() {
 		center := uc.Center()
 		// Fill expansions locations list
-		b.Locs.MyExps = append(b.Locs.MyExps, center)
+		if center != b.Locs.MyStart {
+			b.Locs.MyExps = append(b.Locs.MyExps, center)
+		}
 		// Make pathing queries
 		// From my base to that expansion
 		rqps = append(rqps, &api.RequestQueryPathing{

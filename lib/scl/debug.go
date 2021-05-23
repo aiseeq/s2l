@@ -144,7 +144,7 @@ func (b *Bot) DebugRamps() {
 		z := b.Grid.HeightAt(ramp.Top)
 		boxes = append(boxes, &api.DebugBox{
 			Color: &White,
-			Min:   &api.Point{X: float32(ramp.Top.X()) + 0.25, Y: float32(ramp.Top.Y()) + 0.25, Z: float32(z) - 100},
+			Min:   &api.Point{X: float32(ramp.Top.X()) + 0.25, Y: float32(ramp.Top.Y()) + 0.25, Z: float32(z) - 50},
 			Max:   &api.Point{X: float32(ramp.Top.X()) + 0.75, Y: float32(ramp.Top.Y()) + 0.75, Z: float32(z) + 0.5},
 		})
 	}
@@ -169,7 +169,7 @@ func (b *Bot) DebugPath(path point.Points, color api.Color) {
 		z := b.Grid.HeightAt(p)
 		boxes = append(boxes, &api.DebugBox{
 			Color: &color,
-			Min:   &api.Point{X: float32(p.X()) + 0.25, Y: float32(p.Y()) + 0.25, Z: float32(z) - 100},
+			Min:   &api.Point{X: float32(p.X()) + 0.25, Y: float32(p.Y()) + 0.25, Z: float32(z) - 50},
 			Max:   &api.Point{X: float32(p.X()) + 0.75, Y: float32(p.Y()) + 0.75, Z: float32(z) + 0.5},
 		})
 	}
@@ -270,7 +270,7 @@ func (b *Bot) Debug2x2Buildings(ps ...point.Point) {
 		p = p.Floor()
 		boxes = append(boxes, &api.DebugBox{
 			Color: &Yellow,
-			Min:   &api.Point{X: float32(p.X()), Y: float32(p.Y()), Z: float32(z) - 100},
+			Min:   &api.Point{X: float32(p.X()), Y: float32(p.Y()), Z: float32(z) - 50},
 			Max:   &api.Point{X: float32(p.X()) + 2, Y: float32(p.Y()) + 2, Z: float32(z) + 0.5},
 		})
 	}
@@ -284,7 +284,7 @@ func (b *Bot) Debug3x3Buildings(ps ...point.Point) {
 		p = p.Floor()
 		boxes = append(boxes, &api.DebugBox{
 			Color: &White,
-			Min:   &api.Point{X: float32(p.X()) - 1, Y: float32(p.Y()) - 1, Z: float32(z) - 100},
+			Min:   &api.Point{X: float32(p.X()) - 1, Y: float32(p.Y()) - 1, Z: float32(z) - 50},
 			Max:   &api.Point{X: float32(p.X()) + 2, Y: float32(p.Y()) + 2, Z: float32(z) + 0.5},
 		})
 	}
@@ -298,11 +298,11 @@ func (b *Bot) Debug5x3Buildings(ps ...point.Point) {
 		p = p.Floor()
 		boxes = append(boxes, &api.DebugBox{
 			Color: &Green,
-			Min:   &api.Point{X: float32(p.X()) - 1, Y: float32(p.Y()) - 1, Z: float32(z) - 100},
+			Min:   &api.Point{X: float32(p.X()) - 1, Y: float32(p.Y()) - 1, Z: float32(z) - 50},
 			Max:   &api.Point{X: float32(p.X()) + 2, Y: float32(p.Y()) + 2, Z: float32(z) + 0.5},
 		}, &api.DebugBox{
 			Color: &Green,
-			Min:   &api.Point{X: float32(p.X()) + 2, Y: float32(p.Y()) - 1, Z: float32(z) - 100},
+			Min:   &api.Point{X: float32(p.X()) + 2, Y: float32(p.Y()) - 1, Z: float32(z) - 50},
 			Max:   &api.Point{X: float32(p.X()) + 4, Y: float32(p.Y()) + 1, Z: float32(z) + 0.5},
 		})
 	}
