@@ -25,7 +25,7 @@ func (b *Bot) InitCCMinerals(cc *Unit) {
 		}
 		b.Miners.TargetForMineral[mf.Tag] = target
 	}
-	log.Debugf("Minerals inited for %v", cc) // Check in future, is it called correctly without repeats
+	log.Debugf("Minerals inited for base @ %v", cc.Pos)
 }
 
 func (b *Bot) InitMining() {
@@ -346,7 +346,7 @@ func (b *Bot) HandleMiners(miners Units, ccs Units, balance float64) {
 		return
 	}
 
-	if b.MineralsPerFrame*balance < b.VespenePerFrame {
+	if b.MineralsPerFrame*balance <= b.VespenePerFrame {
 		b.FillMineralsUpTo2(&pool, ccs, mfs)
 		if balance > 0 {
 			b.FillGases(&pool, ccs, gases)

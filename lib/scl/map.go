@@ -326,53 +326,50 @@ func (b *Bot) FindBaseCenter(basePos point.Point) point.Point {
 	return cluster.Center()
 }
 
+func (b *Bot) RequestPathing(p1, p2 point.Point) float64 {
+	rqps := []*api.RequestQueryPathing{{
+		Start: &api.RequestQueryPathing_StartPos{
+			StartPos: p1.To2D(),
+		},
+		EndPos: p2.To2D(),
+	}}
+	if resp, err := B.Client.Query(api.RequestQuery{Pathing: rqps}); err != nil || len(resp.Pathing) == 0 {
+		log.Error(err)
+		return 0
+	} else {
+		return float64(resp.Pathing[0].Distance)
+	}
+}
+
 func (b *Bot) FindExpansions() {
-	var rqps []*api.RequestQueryPathing
 	b.Locs.MyExps = nil
+	var expDists, enemyExpDists []float64
 	// Find expansions locations
 	for _, uc := range b.CalculateExpansionLocations() {
 		center := uc.Center()
 		// Fill expansions locations list
-		if center != b.Locs.MyStart {
-			b.Locs.MyExps = append(b.Locs.MyExps, center)
+		if center == b.Locs.MyStart {
+			continue
 		}
-		// Make pathing queries
+		b.Locs.MyExps = append(b.Locs.MyExps, center)
+		// Make pathing queries. One after another because seems that results can be shuffled (or not and it was me)
 		// From my base to that expansion
-		rqps = append(rqps, &api.RequestQueryPathing{
-			Start: &api.RequestQueryPathing_StartPos{
-				StartPos: b.Locs.MyStart.To2D(),
-			},
-			EndPos: center.To2D(),
-		})
+		dist := b.RequestPathing(b.Locs.MyStart, center)
+		if dist == 0 {
+			dist = b.Locs.MyStart.Dist(center) * 100
+		}
+		expDists = append(expDists, dist)
 		// From enemy base to the same expansion
-		rqps = append(rqps, &api.RequestQueryPathing{
-			Start: &api.RequestQueryPathing_StartPos{
-				StartPos: b.Locs.EnemyStart.To2D(),
-			},
-			EndPos: center.To2D(),
-		})
+		dist = b.RequestPathing(b.Locs.EnemyStart, center)
+		if dist == 0 {
+			dist = b.Locs.EnemyStart.Dist(center) * 100
+		}
+		enemyExpDists = append(enemyExpDists, dist)
 	}
 	b.Locs.EnemyExps = make(point.Points, len(b.Locs.MyExps))
 	copy(b.Locs.EnemyExps, b.Locs.MyExps)
 
 	// Sort expansins locations by walking distance from base
-	var expDists, enemyExpDists []float64
-	resp, err := b.Client.Query(api.RequestQuery{Pathing: rqps, IgnoreResourceRequirements: true})
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	for x, rqp := range resp.Pathing {
-		dist := 1000.0
-		if rqp != nil && rqp.Distance != 0 {
-			dist = float64(rqp.Distance)
-		}
-		if x%2 == 0 {
-			expDists = append(expDists, dist)
-		} else {
-			enemyExpDists = append(enemyExpDists, dist)
-		}
-	}
 	b.Locs.MyExps = SortByOther(b.Locs.MyExps, expDists)
 	b.Locs.EnemyExps = SortByOther(b.Locs.EnemyExps, enemyExpDists)
 	// b.ExpPaths = make([]Steps, b.Locs.MyExps.Len())

@@ -8,6 +8,7 @@ import (
 	"github.com/aiseeq/s2l/protocol/client"
 	"github.com/aiseeq/s2l/protocol/enums/ability"
 	"github.com/aiseeq/s2l/protocol/enums/terran"
+	"github.com/aiseeq/s2l/protocol/enums/zerg"
 	"github.com/gonum/floats"
 	"github.com/google/gxui/math"
 )
@@ -360,12 +361,27 @@ func SimpleLogic() {
 	CheckTime()
 }
 
-func MiningLib() {
-	if B.Loop >= 102 && B.Loop < 105 {
-		B.RedistributeWorkersToRefineryIfNeeded(B.Units.My[terran.Refinery].First(), B.Units.My[terran.SCV], 3)
+func BuildDrones() {
+	larvae := B.Units.My[zerg.Larva]
+	if larvae.Exists() && B.CanBuy(ability.Train_Drone) {
+		larvae.First().Command(ability.Train_Drone)
 	}
-	B.HandleMiners(B.Units.My[terran.SCV], B.Units.My[terran.CommandCenter], 1)
-	BuildSCVs()
+}
+
+func MiningLib() {
+	if B.MyRace() == api.Race_Terran {
+		if B.Loop >= 102 && B.Loop < 105 {
+			B.RedistributeWorkersToRefineryIfNeeded(B.Units.My[terran.Refinery].First(), B.Units.My[terran.SCV], 3)
+		}
+		B.HandleMiners(B.Units.My[terran.SCV], B.Units.My[terran.CommandCenter], 1)
+		BuildSCVs()
+	} else if B.MyRace() == api.Race_Zerg {
+		if B.Loop >= 102 && B.Loop < 105 {
+			B.RedistributeWorkersToRefineryIfNeeded(B.Units.My[zerg.Hatchery].First(), B.Units.My[zerg.Drone], 3)
+		}
+		B.HandleMiners(B.Units.My[zerg.Drone], B.Units.My[zerg.Hatchery], 1)
+		BuildDrones()
+	}
 	CheckTime()
 }
 
@@ -409,15 +425,26 @@ func Step() {
 }
 
 func AddBuildings() {
-	B.DebugAddUnits(terran.SupplyDepot, B.Obs.PlayerCommon.PlayerId, B.Locs.MyStart.Towards(B.Locs.MapCenter, 3), 1)
-	// B.DebugAddUnits(terran.MissileTurret, B.Obs.PlayerCommon.PlayerId, B.Locs.MyStart.Towards(B.Locs.MapCenter, -2), 1)
-	cc := B.Units.My[terran.CommandCenter].First()
-	geysers := B.Units.Geysers.All().CloserThan(10, cc)
-	for _, geyser := range geysers {
-		B.DebugKillUnits(geyser.Tag)
-		B.DebugAddUnits(terran.Refinery, B.Obs.PlayerCommon.PlayerId, point.Pt3(geyser.Pos), 1)
+	if B.MyRace() == api.Race_Terran {
+		B.DebugAddUnits(terran.SupplyDepot, B.Obs.PlayerCommon.PlayerId, B.Locs.MyStart.Towards(B.Locs.MapCenter, 3), 1)
+		// B.DebugAddUnits(terran.MissileTurret, B.Obs.PlayerCommon.PlayerId, B.Locs.MyStart.Towards(B.Locs.MapCenter, -2), 1)
+		cc := B.Units.My[terran.CommandCenter].First()
+		geysers := B.Units.Geysers.All().CloserThan(10, cc)
+		for _, geyser := range geysers {
+			B.DebugKillUnits(geyser.Tag)
+			B.DebugAddUnits(terran.Refinery, B.Obs.PlayerCommon.PlayerId, point.Pt3(geyser.Pos), 1)
+		}
+		B.DebugSend()
+	} else if B.MyRace() == api.Race_Zerg {
+		B.DebugAddUnits(zerg.Overlord, B.Obs.PlayerCommon.PlayerId, B.Locs.MyStart, 1)
+		cc := B.Units.My[zerg.Hatchery].First()
+		geysers := B.Units.Geysers.All().CloserThan(10, cc)
+		for _, geyser := range geysers {
+			B.DebugKillUnits(geyser.Tag)
+			B.DebugAddUnits(zerg.Extractor, B.Obs.PlayerCommon.PlayerId, point.Pt3(geyser.Pos), 1)
+		}
+		B.DebugSend()
 	}
-	B.DebugSend()
 }
 
 const workersLimit = 22
@@ -432,7 +459,7 @@ func main() {
 			client.SetRealtime()
 			if cfg == nil {
 				client.SetMap(mapName + ".SC2Map")
-				bot := client.NewParticipant(api.Race_Terran, "MiningTest")
+				bot := client.NewParticipant(api.Race_Zerg, "MiningTest")
 				cpu := client.NewComputer(api.Race_Protoss, api.Difficulty_Medium, api.AIBuild_RandomBuild)
 				cfg = client.LaunchAndJoin(bot, cpu)
 			} else {
