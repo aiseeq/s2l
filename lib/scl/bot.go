@@ -2,7 +2,6 @@ package scl
 
 import (
 	"bitbucket.org/aisee/minilog"
-	"fmt"
 	"github.com/aiseeq/s2l/lib/actions"
 	"github.com/aiseeq/s2l/lib/grid"
 	"github.com/aiseeq/s2l/lib/point"
@@ -325,7 +324,7 @@ func (b *Bot) ParseUnits() {
 			b.Units.Enemy.Add(unit.UnitType, u)
 			b.Units.AllEnemy.Add(unit.UnitType, u)
 			visibleTags[u.Tag] = true
-			b.EnemyProduction.Add(unit.UnitType, unit.Tag)
+			b.EnemyProduction.Add(unit.UnitType, unit.Tag) // Used to count score to decide what unit to build
 		case api.Alliance_Neutral:
 			if u.IsMineral() {
 				b.Units.Minerals.Add(unit.UnitType, u)
@@ -335,7 +334,7 @@ func (b *Bot) ParseUnits() {
 				b.Units.Neutral.Add(unit.UnitType, u)
 			}
 		default:
-			fmt.Fprintln(os.Stderr, "Not supported alliance: ", unit)
+			log.Error("Not supported alliance: ", unit)
 			continue
 		}
 
@@ -355,7 +354,7 @@ func (b *Bot) ParseUnits() {
 				case u.Radius == 2.75:
 					size = S5x5
 				default:
-					log.Notice("No size for building:", u.UnitType, u.Radius)
+					log.Warning("No size for building:", u.UnitType, u.Radius)
 				}
 				if size != 0 {
 					for _, p := range b.GetBuildingPoints(pos, size) {
@@ -450,7 +449,7 @@ func (b *Bot) ParseObservation() {
 }
 
 func (b *Bot) DetectEnemyRace() {
-	if b.EnemyRace == 0 {
+	if b.EnemyRace == api.Race_NoRace {
 		enemyId := 3 - b.Obs.PlayerCommon.PlayerId // hack?
 		b.EnemyRace = b.Info.PlayerInfo[enemyId-1].RaceRequested
 	} else if b.EnemyRace == api.Race_Random && b.Units.Enemy.Exists() {

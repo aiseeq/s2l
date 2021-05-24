@@ -11,8 +11,9 @@ import (
 )
 
 type Ramp struct {
-	Top point.Point
-	Vec point.Point
+	Top  point.Point
+	Vec  point.Point
+	Size int
 }
 
 type BuildingSize int
@@ -272,7 +273,7 @@ func (b *Bot) FindRamps() {
 					}
 					for _, np := range []point.Point{p1, p2, pt} {
 						if b.Grid.IsBuildable(np) {
-							b.Ramps.All = append(b.Ramps.All, Ramp{Top: np, Vec: vec})
+							b.Ramps.All = append(b.Ramps.All, Ramp{Top: np, Vec: vec, Size: cluster.Len()})
 							break
 						}
 					}
@@ -310,6 +311,9 @@ func (b *Bot) InitLocations() {
 func (b *Bot) InitRamps() {
 	// Find ramps closest to start locations
 	for _, ramp := range b.Ramps.All {
+		if ramp.Size <= 16 {
+			continue // Strange blockaded ramp on Golden Wall
+		}
 		if b.Ramps.My.Top == 0 || ramp.Top.Dist2(b.Locs.MyStart) < b.Ramps.My.Top.Dist2(b.Locs.MyStart) {
 			b.Ramps.My = ramp
 		}
