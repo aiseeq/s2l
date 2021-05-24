@@ -328,6 +328,10 @@ func (u *Unit) IsVisible() bool {
 	return u.DisplayType == api.DisplayType_Visible
 }
 
+func (u *Unit) IsHidden() bool {
+	return u.DisplayType == api.DisplayType_Hidden
+}
+
 func (u *Unit) IsPosVisible() bool {
 	return B.Grid.IsVisible(u)
 }
@@ -915,6 +919,7 @@ func Ready(u *Unit) bool      { return u.IsReady() }
 func Gathering(u *Unit) bool  { return u.IsGathering() }
 func Visible(u *Unit) bool    { return u.IsVisible() }
 func PosVisible(u *Unit) bool { return u.IsPosVisible() }
+func Hidden(u *Unit) bool     { return u.IsHidden() }
 func Structure(u *Unit) bool  { return u.IsStructure() }
 func Flying(u *Unit) bool     { return u.IsFlying }
 func NotFlying(u *Unit) bool  { return !u.IsFlying }
