@@ -92,7 +92,7 @@ func (b *Bot) Path(toPtr, fromPtr point.Pointer) (point.Points, float64) {
 		return nil, 0
 	}
 
-	var ps point.Points
+	ps := point.Points{}
 	for _, i := range path {
 		t := i.(*Tile)
 		ps.Add(point.Pt(t.X, t.Y))

@@ -499,11 +499,11 @@ func (u *Unit) SightRange() float64 {
 
 func (u *Unit) RangeDelta(target *Unit, gap float64) float64 {
 	unitRange := -100.0
-	if u.GroundDPS() > 0 && !target.IsFlying {
+	if u.GroundDPS() > 0 && Ground(target) {
 		unitRange = u.GroundRange()
 	}
 	// Air range is always larger than ground
-	if u.AirDPS() > 0 && target.IsFlying {
+	if u.AirDPS() > 0 && Flying(target) {
 		unitRange = u.AirRange()
 	}
 
@@ -921,8 +921,8 @@ func Visible(u *Unit) bool    { return u.IsVisible() }
 func PosVisible(u *Unit) bool { return u.IsPosVisible() }
 func Hidden(u *Unit) bool     { return u.IsHidden() }
 func Structure(u *Unit) bool  { return u.IsStructure() }
-func Flying(u *Unit) bool     { return u.IsFlying }
-func NotFlying(u *Unit) bool  { return !u.IsFlying }
+func Flying(u *Unit) bool     { return u.IsFlying || u.UnitType == protoss.Colossus }
+func Ground(u *Unit) bool     { return !u.IsFlying || u.UnitType == protoss.Colossus }
 func NotWorker(u *Unit) bool  { return !u.IsWorker() }
 func DpsGt5(u *Unit) bool     { return u.GroundDPS() > 5 }
 func NoAddon(u *Unit) bool    { return u.AddOnTag == 0 }

@@ -49,7 +49,7 @@ type Bot struct {
 		All      Units
 		AllReady Units
 		Visible  Units
-		Clusters []*Cluster
+		Clusters []*Cluster // Not used yet
 	}
 	U struct { // Moved from globals in units
 		Types              []*api.UnitTypeData
@@ -199,38 +199,6 @@ func (b *Bot) Init(renewPaths bool) {
 	if renewPaths {
 		go b.RenewPaths()
 	}
-}
-
-func (b *Bot) CanBuy(ability api.AbilityID) bool {
-	cost, ok := b.U.AbilityCost[ability]
-	if !ok {
-		log.Warning("no cost for ability: ", ability)
-	}
-	return (cost.Minerals == 0 || b.Minerals >= cost.Minerals) &&
-		(cost.Vespene == 0 || b.Vespene >= cost.Vespene) &&
-		(cost.Food <= 0 || b.FoodLeft >= cost.Food)
-}
-
-func (b *Bot) DeductResources(aid api.AbilityID) {
-	cost := b.U.AbilityCost[aid]
-	b.Minerals -= cost.Minerals
-	b.Vespene -= cost.Vespene
-	if cost.Food > 0 {
-		b.FoodUsed += cost.Food
-		b.FoodLeft -= cost.Food
-	}
-}
-
-func (b *Bot) Pending(aid api.AbilityID) int {
-	return b.Units.My[b.U.AbilityUnit[aid]].Len() + b.Orders[aid]
-}
-
-func (b *Bot) PendingAliases(aid api.AbilityID) int {
-	return b.Units.My.OfType(b.U.UnitAliases.For(b.U.AbilityUnit[aid])...).Len() + b.Orders[aid]
-}
-
-func (b *Bot) CanBuild(aid api.AbilityID, limit, active int) bool {
-	return b.CanBuy(aid) && b.Pending(aid) < limit && b.Orders[aid] < active
 }
 
 func (b *Bot) AddToCluster(enemy *Unit, c *Cluster) {

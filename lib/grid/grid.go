@@ -30,10 +30,6 @@ func (g *Grid) Renew(startRaw *api.StartRaw, mapState *api.MapState) {
 }
 
 func (g *Grid) copy(startRaw *api.StartRaw, mapState *api.MapState) {
-	// deepcopy is VERY slow
-	// g.StartRaw = deepcopy.Copy(startRaw).(*api.StartRaw)
-	// g.MapState = deepcopy.Copy(mapState).(*api.MapState)
-
 	g.StartRaw = &api.StartRaw{}
 	data, _ := startRaw.Marshal()
 	g.StartRaw.Unmarshal(data)
