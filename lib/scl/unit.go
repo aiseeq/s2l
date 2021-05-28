@@ -317,7 +317,7 @@ func (u *Unit) IsMoving() bool {
 }
 
 func (u *Unit) IsCool() bool {
-	return AttackDelay.UnitIsCool(u)
+	return B.U.AfterAttack.UnitIsCool(u)
 }
 
 func (u *Unit) IsHalfCool() bool {
@@ -685,8 +685,11 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 }*/
 
 func (u *Unit) GroundFallback(enemies Units, gap float64, safePos point.Point) {
-	if B.U.UnitsOrders[u.Tag].Loop+AttackDelay.Max(u.UnitType, B.FramesPerOrder) > B.Loop {
+	if B.U.UnitsOrders[u.Tag].Loop+B.U.AfterAttack.Max(u.UnitType, B.FramesPerOrder) > B.Loop {
 		return // Not more than FramesPerOrder
+	}
+	if delay, ok := B.U.AfterAttack[u.UnitType]; ok && B.Loop-B.U.LastAttack[u.Tag] < delay {
+		return // Don't move until attack is done
 	}
 	// fbp, _ := u.GroundFallbackPos(enemies, gap, safePath, 5)
 	fbp := safePos
@@ -795,7 +798,13 @@ func DefaultAttackFunc(u *Unit, priority int, targets Units) bool {
 		target := closeTargets.Min(func(unit *Unit) float64 {
 			return unit.Hits
 		})
-		u.CommandTag(ability.Attack_Attack, target.Tag)
+		if delay, ok := B.U.BeforeAttack[u.UnitType]; ok && B.Loop-B.U.LastAttack[u.Tag] < delay {
+			// Don't send another attack command or that could switch targets and attack will fail
+		} else {
+			// log.Info(u.UnitType, B.U.BeforeAttack[u.UnitType], B.Loop - B.U.LastAttack[u.Tag])
+			u.CommandTag(ability.Attack_Attack, target.Tag)
+			B.U.LastAttack[u.Tag] = B.Loop
+		}
 		return true
 	}
 	return false
@@ -846,6 +855,9 @@ func (u *Unit) EvadeEffectsPos(ptr point.Pointer, checkKD8 bool, eids ...api.Eff
 }
 
 func (u *Unit) AttackMove(target *Unit) {
+	if delay, ok := B.U.AfterAttack[u.UnitType]; ok && B.Loop-B.U.LastAttack[u.Tag] < delay {
+		return // Don't move until attack is done
+	}
 	npos := u.Towards(target, 2)
 	if !u.IsFlying {
 		if p := u.GroundTowards(target, 2, false); p != 0 {

@@ -3,27 +3,12 @@ package scl
 import (
 	"bitbucket.org/aisee/minilog"
 	"github.com/aiseeq/s2l/protocol/api"
-	"github.com/aiseeq/s2l/protocol/enums/protoss"
-	"github.com/aiseeq/s2l/protocol/enums/terran"
-	"github.com/aiseeq/s2l/protocol/enums/zerg"
 )
 
 type TagsMap map[api.UnitTag]bool
 type TagsByTypes map[api.UnitTypeID]TagsMap
 type UnitsByTypes map[api.UnitTypeID]Units
 type AttackDelays map[api.UnitTypeID]int
-
-var AttackDelay = AttackDelays{
-	terran.Cyclone:         9,
-	terran.Hellion:         21,
-	terran.SiegeTankSieged: 15,
-	terran.SiegeTank:       6,
-	terran.SCV:             6,
-	zerg.Queen:             6,
-	zerg.Drone:             6,
-	protoss.Stalker:        6,
-	protoss.Probe:          6,
-}
 
 func (ut *UnitTypes) Add(ids ...api.UnitTypeID) {
 NextId:

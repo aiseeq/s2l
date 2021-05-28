@@ -11,7 +11,6 @@ import (
 func MakeCluster(units Units, distance float64) []UnitCluster {
 	maxDistance := distance * distance
 
-	// TODO: replace this with a better algorithm
 	var clusters []UnitCluster
 	for _, u := range units {
 		if !u.IsMineral() && !u.IsGeyser() {

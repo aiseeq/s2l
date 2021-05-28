@@ -7,7 +7,9 @@ import (
 	"github.com/aiseeq/s2l/lib/point"
 	"github.com/aiseeq/s2l/protocol/api"
 	"github.com/aiseeq/s2l/protocol/client"
+	"github.com/aiseeq/s2l/protocol/enums/protoss"
 	"github.com/aiseeq/s2l/protocol/enums/terran"
+	"github.com/aiseeq/s2l/protocol/enums/zerg"
 	"math"
 	"os"
 )
@@ -63,10 +65,13 @@ type Bot struct {
 		UnitAliases        Aliases
 		UnitsOrders        map[api.UnitTag]UnitOrder
 
-		Attributes  map[api.UnitTypeID]map[api.Attribute]bool
-		Weapons     map[api.UnitTypeID]Weapon
-		HitsHistory map[api.UnitTag][]int
-		PrevUnits   map[api.UnitTag]*Unit
+		Attributes   map[api.UnitTypeID]map[api.Attribute]bool
+		Weapons      map[api.UnitTypeID]Weapon
+		HitsHistory  map[api.UnitTag][]int
+		PrevUnits    map[api.UnitTag]*Unit
+		AfterAttack  AttackDelays
+		BeforeAttack AttackDelays
+		LastAttack   map[api.UnitTag]int
 	}
 	Miners struct {
 		CCForMiner       map[api.UnitTag]api.UnitTag
@@ -181,6 +186,30 @@ func (b *Bot) Init(renewPaths bool) {
 	b.U.Weapons = map[api.UnitTypeID]Weapon{}
 	b.U.HitsHistory = map[api.UnitTag][]int{}
 	b.U.PrevUnits = map[api.UnitTag]*Unit{}
+
+	// Проблема в том, что есть большая разница между выстрелом после разворота и выстрелом без него
+	// todo: как-то учитывать начальное направление взгляда юнита?
+	b.U.AfterAttack = AttackDelays{
+		terran.Cyclone:     9,
+		terran.Hellion:     6,
+		terran.HellionTank: 6,
+		terran.Thor:        24, // todo: он может двигаться быстрее, если была воздушная атака
+		terran.ThorAP:      24,
+		terran.SCV:         6,
+		terran.Reaper:      6, // todo: всё равно иногда не достаточно (редко)
+		zerg.Queen:         6,
+		zerg.Drone:         6,
+		protoss.Stalker:    6,
+		protoss.Probe:      6,
+	}
+	b.U.BeforeAttack = AttackDelays{
+		terran.Hellion:         6,
+		terran.SiegeTank:       6,
+		terran.SiegeTankSieged: 6,
+		terran.Thor:            24,
+		terran.ThorAP:          24,
+	}
+	B.U.LastAttack = map[api.UnitTag]int{}
 
 	b.UpdateObservation()
 	b.UpdateData()

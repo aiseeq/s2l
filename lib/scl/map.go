@@ -285,6 +285,13 @@ func (b *Bot) FindRamps() {
 	}
 }
 
+func (b *Bot) FindBaseCenter(basePos point.Point) point.Point {
+	basePoints := map[point.Point]bool{}
+	var cluster point.Points
+	b.FindBaseCluster(basePos, &cluster, basePoints)
+	return cluster.Center()
+}
+
 func (b *Bot) InitLocations() {
 	pa := b.Info.StartRaw.PlayableArea
 	b.Locs.MapCenter = (point.PtI(pa.P0) + point.PtI(pa.P1)).Mul(0.5)
@@ -321,13 +328,6 @@ func (b *Bot) InitRamps() {
 			b.Ramps.Enemy = ramp
 		}
 	}
-}
-
-func (b *Bot) FindBaseCenter(basePos point.Point) point.Point {
-	basePoints := map[point.Point]bool{}
-	var cluster point.Points
-	b.FindBaseCluster(basePos, &cluster, basePoints)
-	return cluster.Center()
 }
 
 func (b *Bot) RequestPathing(p1, p2 point.Point) float64 {

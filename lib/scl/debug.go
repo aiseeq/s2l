@@ -339,31 +339,3 @@ func (b *Bot) DebugClusters() {
 		b.DebugLines(lines, color)
 	}
 }
-
-/*for _, ramp := range B.Ramps {
-	B.Debug2x2Buildings(B.FindRamp2x2Positions(ramp)...)
-	B.Debug3x3Buildings(B.FindRampBarracksPositions(ramp))
-}*/
-
-/*start = time.Now()
-for x := 1; x < 100; x++ {
-	B.Path(B.Ramps.My.Top, B.Ramps.Enemy.Top)
-}
-log.Info(time.Now().Sub(start))*/
-/*path, dist := B.Path(B.Ramps.My.Top, B.EnemyRamp.Top)
-log.Info(time.Now().Sub(start), dist, path)
-B.DebugPath(path)
-B.DebugSend()*/
-
-/*start := time.Now()
-paths := B.FindPaths(B.Ramps.My.Top)
-log.Info(time.Now().Sub(start), paths)
-path := paths.From(B.EnemyRamp.Top)
-B.DebugPath(path)
-B.DebugSend()*/
-
-/*start := time.Now()
-path := B.HomePaths.From(B.EnemyRamp.Top)
-log.Info(time.Now().Sub(start))
-B.DebugPath(path)
-B.DebugSend()*/
