@@ -733,7 +733,7 @@ func (u *Unit) GroundFallback(safePos point.Point) {
 	}
 	if from != 0 {
 		path, _ := NavPath(navGrid, waymap, u, fbp)
-		pos := path.FirstFurtherThan(4, u)
+		pos := path.FirstFurtherThan(2, u)
 		if pos != 0 {
 			fbp = pos
 		}
