@@ -195,7 +195,7 @@ func (b *Bot) FindHomeMineralsVector() {
 	b.Locs.MyStartMinVec = vec
 }
 
-func (b *Bot) RenewPaths() {
+func (b *Bot) RenewPaths(once bool) {
 	for {
 		b.Grid.Lock()
 		navGrid := grid.New(b.Grid.StartRaw, b.Grid.MapState)
@@ -292,8 +292,11 @@ func (b *Bot) RenewPaths() {
 		b.Grid.Unlock()
 		b.DebugSend()*/
 
+		if once {
+			return
+		}
 		// continue // don't wait, more updates!
-		for lastLoop+3 > b.Loop {
+		for lastLoop+B.FramesPerOrder > b.Loop {
 			time.Sleep(time.Millisecond)
 		}
 	}

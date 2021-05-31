@@ -719,21 +719,21 @@ func (u *Unit) GroundFallback(safePos point.Point) {
 	}
 	// fbp, _ := u.GroundFallbackPos(enemies, gap, safePath, 5)
 	fbp := safePos
-	if !B.SafeGrid.IsPathable(fbp) {
-		if pos := B.FindClosestPathable(B.SafeGrid, fbp); pos != 0 {
+	navGrid, waymap := u.GetWayMap(true)
+	if !navGrid.IsPathable(fbp) {
+		if pos := B.FindClosestPathable(navGrid, fbp); pos != 0 {
 			fbp = pos
 		}
 	}
 	from := u.Point()
-	if !B.SafeGrid.IsPathable(from) {
-		if pos := B.FindClosestPathable(B.SafeGrid, from); pos != 0 {
+	if !navGrid.IsPathable(from) {
+		if pos := B.FindClosestPathable(navGrid, from); pos != 0 {
 			from = pos
 		}
 	}
 	if from != 0 {
-		navGrid, waymap := u.GetWayMap(true)
 		path, _ := NavPath(navGrid, waymap, u, fbp)
-		pos := path.FirstFurtherThan(2, u)
+		pos := path.FirstFurtherThan(4, u)
 		if pos != 0 {
 			fbp = pos
 		}

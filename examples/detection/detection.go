@@ -62,7 +62,7 @@ func main() {
 	B = scl.New(c, nil)
 	B.FramesPerOrder = 3
 	B.LastLoop = -math.MaxInt
-	B.Init(false) // we don't need to renew paths here
+	B.Init(true) // we don't need to renew paths here
 
 	AddDebug()
 

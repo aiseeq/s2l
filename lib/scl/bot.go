@@ -170,7 +170,7 @@ func New(client *client.Client, ucc func(unit *Unit)) *Bot {
 	return &b
 }
 
-func (b *Bot) Init(renewPaths bool) {
+func (b *Bot) Init(renewPathsOnce bool) {
 	// Init unit data
 	b.U.Types = []*api.UnitTypeData{}
 	b.U.GroundAttackCircle = map[api.UnitTypeID]point.Points{}
@@ -228,9 +228,7 @@ func (b *Bot) Init(renewPaths bool) {
 	b.InitMining()
 	b.FindRamps()
 	b.InitRamps()
-	if renewPaths {
-		go b.RenewPaths()
-	}
+	go b.RenewPaths(renewPathsOnce)
 }
 
 func (b *Bot) AddToCluster(enemy *Unit, c *Cluster) {
