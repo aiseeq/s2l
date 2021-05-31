@@ -345,6 +345,20 @@ func (b *Bot) RequestPathing(p1, p2 point.Point) float64 {
 	}
 }
 
+func (b *Bot) RequestPlacement(ability api.AbilityID, pos point.Point, builder *Unit) bool {
+	rps := []*api.RequestQueryBuildingPlacement{{
+		AbilityId:      ability,
+		TargetPos:      pos.To2D(),
+		PlacingUnitTag: builder.Tag,
+	}}
+	if resp, err := B.Client.Query(api.RequestQuery{Placements: rps}); err != nil || len(resp.Placements) == 0 {
+		log.Error(err)
+		return false
+	} else {
+		return resp.Placements[0].Result == api.ActionResult_Success
+	}
+}
+
 func (b *Bot) FindExpansions() {
 	b.Locs.MyExps = nil
 	var expDists, enemyExpDists []float64

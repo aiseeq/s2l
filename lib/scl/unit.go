@@ -556,7 +556,7 @@ func (u *Unit) AssessStrength(attackers Units, closeCircle float64) (outranged, 
 		friendsScore := B.Units.My.All().CloserThan(closeCircle, u).Sum(CmpTotalScore)
 		enemiesScore := B.Enemies.AllReady.CloserThan(closeCircle, maxRangeUnit).Sum(CmpTotalScore)
 		// log.Info(friendsScore, enemiesScore)
-		if friendsScore*0.75 >= enemiesScore { // todo: test multiplier here
+		if friendsScore*1.25 >= enemiesScore { // todo: test multiplier here
 			stronger = true
 		}
 	}
