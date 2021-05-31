@@ -39,15 +39,16 @@ type Bot struct {
 		My    Ramp
 		Enemy Ramp
 	}
-	Units struct { // todo: ByTag
+	Units struct {
 		My       UnitsByTypes
 		Enemy    UnitsByTypes
 		AllEnemy UnitsByTypes
 		Minerals UnitsByTypes
 		Geysers  UnitsByTypes
 		Neutral  UnitsByTypes
+		ByTag    map[api.UnitTag]*Unit
 	}
-	Enemies struct {
+	Enemies struct { // todo: same for my units
 		All      Units
 		AllReady Units
 		Visible  Units
@@ -190,7 +191,7 @@ func (b *Bot) Init(renewPaths bool) {
 	// Проблема в том, что есть большая разница между выстрелом после разворота и выстрелом без него
 	// todo: как-то учитывать начальное направление взгляда юнита?
 	b.U.AfterAttack = AttackDelays{
-		terran.Cyclone:     9,
+		terran.Cyclone:     6,
 		terran.Hellion:     6,
 		terran.HellionTank: 6,
 		terran.Thor:        24, // todo: он может двигаться быстрее, если была воздушная атака
@@ -202,7 +203,9 @@ func (b *Bot) Init(renewPaths bool) {
 		protoss.Stalker:    6,
 		protoss.Probe:      6,
 	}
-	b.U.BeforeAttack = AttackDelays{
+	b.U.BeforeAttack = AttackDelays{ // Before next attack - increase if unit switches but not attacking
+		terran.Banshee:         18, // долго ракеты летят
+		terran.Cyclone:         6,
 		terran.Hellion:         6,
 		terran.SiegeTank:       6,
 		terran.SiegeTankSieged: 6,
@@ -296,6 +299,7 @@ func (b *Bot) ParseUnits() {
 	b.Units.Geysers = UnitsByTypes{}
 	b.Units.Neutral = UnitsByTypes{}
 	b.Units.Enemy = UnitsByTypes{}
+	b.Units.ByTag = map[api.UnitTag]*Unit{}
 	if b.Groups == nil {
 		b.Groups = NewGroups(b.MaxGroup)
 	} else {
@@ -310,6 +314,7 @@ func (b *Bot) ParseUnits() {
 
 	for _, unit := range b.Obs.RawData.Units {
 		u, isNew := b.NewUnit(unit)
+		b.Units.ByTag[u.Tag] = u
 		switch unit.Alliance {
 		case api.Alliance_Self:
 			b.Units.My.Add(unit.UnitType, u)
@@ -487,7 +492,7 @@ func (b *Bot) RequestAvailableAbilities(irr bool, us ...*Unit) {
 	}
 	for _, u := range us {
 		if irr {
-			u.TrueAbilities = amap[u.Tag]
+			u.IrrAbilities = amap[u.Tag]
 		} else {
 			u.Abilities = amap[u.Tag]
 		}

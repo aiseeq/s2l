@@ -281,7 +281,20 @@ func (us Units) Attack(targetsGroups ...Units) {
 func CmpTags(unit *Unit) float64         { return float64(unit.Tag) }
 func CmpGroundDamage(unit *Unit) float64 { return unit.GroundDamage() }
 func CmpGroundDPS(unit *Unit) float64    { return unit.GroundDPS() }
+func CmpAirDPS(unit *Unit) float64       { return unit.AirDPS() }
 func CmpGroundScore(unit *Unit) float64  { return unit.GroundDPS() * unit.Hits }
+func CmpAirScore(unit *Unit) float64     { return unit.AirDPS() * unit.Hits }
+func CmpTotalScore(unit *Unit) float64 {
+	if unit.GroundDPS() == 0 {
+		return unit.AirDPS() * unit.Hits
+	}
+	if unit.AirDPS() == 0 {
+		return unit.GroundDPS() * unit.Hits
+	}
+	return (unit.AirDPS() + unit.GroundDPS()) * unit.Hits / 2
+}
+func CmpGroundRange(unit *Unit) float64 { return unit.GroundRange() }
+func CmpAirRange(unit *Unit) float64    { return unit.AirRange() }
 func CmpFood(unit *Unit) float64 {
 	if req := B.U.Types[unit.UnitType].FoodRequired; req > 0 {
 		return float64(req)

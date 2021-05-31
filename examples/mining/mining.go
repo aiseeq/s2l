@@ -383,6 +383,8 @@ func MiningLib() {
 		BuildDrones()
 	}
 	CheckTime()
+	// B.DebugOrders()
+	// B.DebugSend()
 }
 
 func Step() {
@@ -447,7 +449,7 @@ func AddBuildings() {
 	}
 }
 
-const workersLimit = 22
+const workersLimit = 16
 const repeats = 10
 
 func main() {

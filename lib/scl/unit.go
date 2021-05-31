@@ -15,17 +15,16 @@ import (
 
 type Unit struct {
 	api.Unit
-	SpamCmds        bool
-	HPS             float64
-	Hits            float64
-	HitsMax         float64
-	HitsLost        float64
-	LastMaxCooldown float64
-	Abilities       []api.AbilityID
-	TrueAbilities   []api.AbilityID
-	PosDelta        point.Point
-	Neighbours      Units
-	Cluster         *Cluster
+	SpamCmds     bool
+	HPS          float64
+	Hits         float64
+	HitsMax      float64
+	HitsLost     float64
+	Abilities    []api.AbilityID
+	IrrAbilities []api.AbilityID
+	PosDelta     point.Point
+	Neighbours   Units
+	Cluster      *Cluster
 }
 
 type Cost struct {
@@ -47,9 +46,6 @@ type UnitOrder struct {
 	Pos     point.Point
 	Tag     api.UnitTag
 }
-
-type UnitTypes []api.UnitTypeID
-type Aliases map[api.UnitTypeID]UnitTypes
 
 func (b *Bot) InitUnits(typeData []*api.UnitTypeData) {
 	b.U.Types = typeData
@@ -89,7 +85,7 @@ func (b *Bot) InitUnits(typeData []*api.UnitTypeData) {
 					Damage:  5,
 					Attacks: 1,
 					Range:   6,
-					Speed:   0.224,
+					Speed:   0.224, // Cooldown: 0.16 seconds / 16 frames * 22.4 frames = 0.224
 				},
 				{
 					Type:    api.Weapon_Ground,
@@ -134,9 +130,7 @@ func (b *Bot) InitUnits(typeData []*api.UnitTypeData) {
 			// Count from center of the cell where unit is
 			for y := -math.Ceil(r); y <= math.Ceil(r); y++ {
 				for x := -math.Ceil(r); x <= math.Ceil(r); x++ {
-					x2 := (x) * (x)
-					y2 := (y) * (y)
-					if x2+y2 <= r2 {
+					if x*x+y*y <= r2 {
 						ps.Add(point.Pt(x, y))
 					}
 				}
@@ -226,11 +220,6 @@ func (b *Bot) NewUnit(unit *api.Unit) (*Unit, bool) {
 	}
 
 	u.PosDelta = pu.Point() - u.Point()
-	if u.WeaponCooldown == 0 {
-		u.LastMaxCooldown = 0
-	} else if float64(u.WeaponCooldown) > u.LastMaxCooldown {
-		u.LastMaxCooldown = float64(u.WeaponCooldown)
-	}
 
 	b.U.HitsHistory[u.Tag] = hits
 	b.U.PrevUnits[u.Tag] = u
@@ -316,12 +305,31 @@ func (u *Unit) IsMoving() bool {
 	return len(u.Orders) > 0 && (u.Orders[0].AbilityId == ability.Move || u.Orders[0].AbilityId == ability.Move_Move)
 }
 
-func (u *Unit) IsCool() bool {
-	return B.U.AfterAttack.UnitIsCool(u)
+// Used to check if it is ok to issue next _move_ order without interrupting current attack action
+func (u *Unit) IsCoolToMove() bool {
+	if delay, ok := B.U.AfterAttack[u.UnitType]; ok && B.Loop-B.U.LastAttack[u.Tag] < delay {
+		return false
+	}
+	return true
+	// return B.U.AfterAttack.UnitIsCool(u)
 }
 
-func (u *Unit) IsHalfCool() bool {
-	return float64(u.WeaponCooldown) <= u.LastMaxCooldown/2
+// Тут нужно определять способен ли юнит нанести удар развернувшись без дополнительной задержки
+// Но так же надо следить, успеют ли укусить рипера или другой отступающий юнит
+// Пока что надёжнее дожидаться u.WeaponCooldown == 0, тогда
+// Рипер убегая от лингов или зилота атакует реже и тем самым может сохранять дистанцию
+// Used to check if unit is ready to attack right away
+func (u *Unit) IsCoolToAttack() bool {
+	return u.WeaponCooldown == 0
+}
+
+// Used to check if it is ok to issue next _attack_ order without interrupting current attack action
+func (u *Unit) IsCoolToAttackAgain() bool {
+	if delay, ok := B.U.BeforeAttack[u.UnitType]; ok && B.Loop-B.U.LastAttack[u.Tag] < delay {
+		return false
+	}
+	return true
+	// return B.U.BeforeAttack.UnitIsCool(u)
 }
 
 func (u *Unit) IsVisible() bool {
@@ -426,8 +434,8 @@ func (u *Unit) HasAbility(a api.AbilityID) bool {
 	return false
 }
 
-func (u *Unit) HasTrueAbility(a api.AbilityID) bool {
-	for _, abil := range u.TrueAbilities {
+func (u *Unit) HasIrrAbility(a api.AbilityID) bool { // Ignore resource requirement
+	for _, abil := range u.IrrAbilities {
 		if abil == a {
 			return true
 		}
@@ -534,6 +542,27 @@ func (u *Unit) CanAttack(us Units, gap float64) Units {
 	return us.InRangeOf(u, gap)
 }
 
+func (u *Unit) AssessStrength(attackers Units, closeCircle float64) (outranged, stronger bool) {
+	var maxRangeUnit *Unit
+	if Ground(u) {
+		maxRangeUnit = attackers.Max(CmpGroundRange)
+		outranged = maxRangeUnit.GroundRange() >= u.GroundRange()
+	}
+	if Flying(u) {
+		maxRangeUnit = attackers.Max(CmpAirRange)
+		outranged = maxRangeUnit.AirRange() >= math.Max(u.GroundRange(), u.AirRange())
+	}
+	if outranged {
+		friendsScore := B.Units.My.All().CloserThan(closeCircle, u).Sum(CmpTotalScore)
+		enemiesScore := B.Enemies.AllReady.CloserThan(closeCircle, maxRangeUnit).Sum(CmpTotalScore)
+		// log.Info(friendsScore, enemiesScore)
+		if friendsScore*0.75 >= enemiesScore { // todo: test multiplier here
+			stronger = true
+		}
+	}
+	return
+}
+
 func (u *Unit) AirEvade(enemies Units, gap float64, ptr point.Pointer) (point.Point, bool) { // bool = is safe
 	pos := ptr.Point()
 	if enemies.Empty() {
@@ -558,7 +587,7 @@ func (u *Unit) AirEvade(enemies Units, gap float64, ptr point.Pointer) (point.Po
 		return pos, true // Unit can just move to desired position
 	}
 	// Move to enemy range border
-	if outrange > -1 {
+	if outrange > -1 { // Close to the border, less than 1
 		rangeVec := (cu.Point() - hazard.Point()).Norm().Mul(-outrange)
 		tangVec := (rangeVec * 1i).Mul(math.Sqrt(1 - outrange*outrange))
 		p1 := cu.Point() + rangeVec + tangVec
@@ -568,7 +597,7 @@ func (u *Unit) AirEvade(enemies Units, gap float64, ptr point.Pointer) (point.Po
 		}
 		return u.Point() + (p2 - cu.Point()).Norm().Mul(airSpeedBoostRange), false
 	}
-	// Move directly from enemy
+	// Move directly from enemy (actually, not totally directly, little towards desired direction)
 	escVec := (pos - hazard.Point()).Norm().Mul(airSpeedBoostRange)
 	return u.Point() + escVec, false
 }
@@ -684,11 +713,8 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 	return fbp, isSafe
 }*/
 
-func (u *Unit) GroundFallback(enemies Units, gap float64, safePos point.Point) {
-	if B.U.UnitsOrders[u.Tag].Loop+B.U.AfterAttack.Max(u.UnitType, B.FramesPerOrder) > B.Loop {
-		return // Not more than FramesPerOrder
-	}
-	if delay, ok := B.U.AfterAttack[u.UnitType]; ok && B.Loop-B.U.LastAttack[u.Tag] < delay {
+func (u *Unit) GroundFallback(safePos point.Point) {
+	if !u.IsCoolToMove() {
 		return // Don't move until attack is done
 	}
 	// fbp, _ := u.GroundFallbackPos(enemies, gap, safePath, 5)
@@ -731,11 +757,11 @@ func (u *Unit) IsFarFrom(ptr point.Pointer) bool {
 }
 
 func (u *Unit) EstimatePositionAfter(frames int) point.Point {
-	return u.Point() + u.PosDelta.Norm().Mul(float64(u.Speed())*float64(frames)/22.4)
+	return u.Point() + u.PosDelta.Norm().Mul(u.Speed()*float64(frames)/22.4)
 }
 
 func (u *Unit) FramesToPos(ptr point.Pointer) float64 {
-	return u.Dist(ptr) / u.Speed() * 16
+	return u.Dist(ptr) / u.Speed() * 22.4
 }
 
 func (u *Unit) TargetAbility() api.AbilityID {
@@ -790,7 +816,7 @@ type AttackFunc func(u *Unit, priority int, targets Units) bool
 type MoveFunc func(u *Unit, target *Unit)
 
 func DefaultAttackFunc(u *Unit, priority int, targets Units) bool {
-	if priority > 0 && !u.IsHalfCool() { // todo: test IsHalfCool!
+	if priority > 0 && !u.IsCoolToAttack() {
 		return false // Don't focus on secondary targets if weapons are not cool yet
 	}
 	closeTargets := targets.Filter(Visible).InRangeOf(u, 0)
@@ -798,13 +824,9 @@ func DefaultAttackFunc(u *Unit, priority int, targets Units) bool {
 		target := closeTargets.Min(func(unit *Unit) float64 {
 			return unit.Hits
 		})
-		if delay, ok := B.U.BeforeAttack[u.UnitType]; ok && B.Loop-B.U.LastAttack[u.Tag] < delay {
-			// Don't send another attack command or that could switch targets and attack will fail
-		} else {
-			// log.Info(u.UnitType, B.U.BeforeAttack[u.UnitType], B.Loop - B.U.LastAttack[u.Tag])
-			u.CommandTag(ability.Attack_Attack, target.Tag)
-			B.U.LastAttack[u.Tag] = B.Loop
-		}
+		// log.Info(u.UnitType, B.U.BeforeAttack[u.UnitType], B.Loop - B.U.LastAttack[u.Tag])
+		u.CommandTag(ability.Attack_Attack, target.Tag)
+		B.U.LastAttack[u.Tag] = B.Loop
 		return true
 	}
 	return false
@@ -854,10 +876,7 @@ func (u *Unit) EvadeEffectsPos(ptr point.Pointer, checkKD8 bool, eids ...api.Eff
 	return upos, true
 }
 
-func (u *Unit) AttackMove(target *Unit) {
-	if delay, ok := B.U.AfterAttack[u.UnitType]; ok && B.Loop-B.U.LastAttack[u.Tag] < delay {
-		return // Don't move until attack is done
-	}
+func (u *Unit) AttackMove(target point.Pointer) {
 	npos := u.Towards(target, 2)
 	if !u.IsFlying {
 		if p := u.GroundTowards(target, 2, false); p != 0 {
@@ -878,9 +897,8 @@ func (u *Unit) AttackMove(target *Unit) {
 			pos, safe = u.GroundEvade(enemies, 2, npos)
 		}
 		if !safe {
-			friendsDPS := B.Units.My.All().CloserThan(7, u).Sum(CmpGroundDPS)
-			enemiesDPS := enemies.CloserThan(7, target).Sum(CmpGroundDPS)
-			if friendsDPS >= enemiesDPS {
+			outranged, stronger := u.AssessStrength(enemies, 7)
+			if !outranged || stronger {
 				safe = true
 			}
 		}
@@ -901,22 +919,28 @@ func (u *Unit) AttackCustom(attackFunc AttackFunc, moveFunc MoveFunc, targetsGro
 		return // Not more than FramesPerOrder
 	}
 
-	// Here we try to shoot at any target close enough
-	for priority, targets := range targetsGroups {
-		if attackFunc(u, priority, targets) {
-			return
+	// Don't send another attack command or that could switch targets and attack will fail
+	if u.IsCoolToAttackAgain() {
+		// Here we try to shoot at any target close enough
+		for priority, targets := range targetsGroups {
+			if attackFunc(u, priority, targets) {
+				return
+			}
 		}
 	}
 
-	// Can't shoot anyone. Move closer to targets
-	for _, targets := range targetsGroups {
-		target := targets.ClosestTo(u)
-		if target == nil {
-			continue
-		}
+	// Don't move until previous attack is done
+	if u.IsCoolToMove() {
+		// Can't shoot anyone. Move closer to targets
+		for _, targets := range targetsGroups {
+			target := targets.ClosestTo(u)
+			if target == nil {
+				continue
+			}
 
-		moveFunc(u, target)
-		return // No orders if unit is close enough
+			moveFunc(u, target)
+			return // No orders if unit is close enough
+		}
 	}
 }
 
@@ -927,7 +951,7 @@ func (u *Unit) Attack(targetsGroups ...Units) { // Targets in priority from high
 // Filters
 func Idle(u *Unit) bool       { return u.IsIdle() }
 func Unused(u *Unit) bool     { return u.IsUnused() }
-func Ready(u *Unit) bool      { return u.IsReady() }
+func Ready(u *Unit) bool      { return u.IsReady() || u.Cloak == api.CloakState_Cloaked }
 func Gathering(u *Unit) bool  { return u.IsGathering() }
 func Visible(u *Unit) bool    { return u.IsVisible() }
 func PosVisible(u *Unit) bool { return u.IsPosVisible() }

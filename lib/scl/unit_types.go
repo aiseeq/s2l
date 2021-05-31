@@ -5,6 +5,8 @@ import (
 	"github.com/aiseeq/s2l/protocol/api"
 )
 
+type UnitTypes []api.UnitTypeID
+type Aliases map[api.UnitTypeID]UnitTypes
 type TagsMap map[api.UnitTag]bool
 type TagsByTypes map[api.UnitTypeID]TagsMap
 type UnitsByTypes map[api.UnitTypeID]Units

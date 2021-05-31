@@ -36,7 +36,7 @@ func (b *Bot) InitMining() {
 	b.Miners.LastSeen = map[api.UnitTag]int{}
 
 	cc := b.Units.My.OfType(terran.CommandCenter, terran.OrbitalCommand, terran.PlanetaryFortress,
-		zerg.Hatchery, zerg.Lair, zerg.Hive, protoss.Nexus).Filter(Ready).First()
+		zerg.Hatchery, zerg.Lair, zerg.Hive, protoss.Nexus).First(Ready)
 	b.InitCCMinerals(cc)
 	miners := b.Units.My.OfType(terran.SCV, zerg.Drone, protoss.Probe)
 	mfs := b.Units.Minerals.All().CloserThan(ResourceSpreadDistance, cc)
@@ -205,6 +205,12 @@ func (b *Bot) MicroMinerals(miners, ccs Units) {
 			// Minerals are not inited for this CC yet
 			b.InitCCMinerals(cc)
 		}
+		// If miner not mining the mineral he assigned to (happens if game decides to change worker target)
+		if miner.IsGathering() && miner.TargetTag() != mfTag {
+			miner.SpamCmds = true                  // We need to send the same command again
+			miner.CommandTag(ability.Smart, mfTag) // To mine designated mineral
+			continue
+		}
 		if !miner.IsReturning() && len(miner.Orders) < 2 &&
 			miner.IsFurtherThan(0.75, target) && miner.IsCloserThan(2, target) {
 			miner.CommandPos(ability.Move_Move, target)
@@ -226,6 +232,12 @@ func (b *Bot) MicroGas(miners, gases, ccs Units) {
 	for _, miner := range miners {
 		gasTag := b.Miners.GasForMiner[miner.Tag]
 		if gasTag == 0 {
+			continue
+		}
+		// If miner not mining the refinery he assigned to
+		if miner.IsGathering() && miner.TargetTag() != gasTag {
+			miner.SpamCmds = true // We need to send the same command again
+			miner.CommandTag(ability.Smart, gasTag)
 			continue
 		}
 		target := gases.ByTag(gasTag).Towards(miner, float64(gases.First().Radius+miner.Radius))
@@ -277,8 +289,6 @@ func (b *Bot) HandleOversaturation(ccs, allMfs Units) {
 	}
 }
 
-// todo: minerals targets for new cc
-// todo: redistribution from oversaturated on new cc
 // todo: exclude dangerous zones (liberator circle, attacked bases), don't choose dangerous routes
 // balance - minerals to gas gather ratio, ex: 2 => gather more vespene if it is less than minerals * 2
 func (b *Bot) HandleMiners(miners Units, ccs Units, balance float64) {
@@ -370,7 +380,7 @@ func (b *Bot) RedistributeWorkersToRefineryIfNeeded(ref *Unit, miners Units, lim
 			delete(b.Miners.CCForMiner, miner.Tag)
 			delete(b.Miners.MineralForMiner, miner.Tag)
 			freed++
-			if freed > limit { // todo: why we need +1?
+			if freed >= limit {
 				return
 			}
 		}
