@@ -4,6 +4,7 @@ import (
 	"bitbucket.org/aisee/minilog"
 	"github.com/aiseeq/s2l/lib/point"
 	"github.com/aiseeq/s2l/protocol/api"
+	"github.com/aiseeq/s2l/protocol/enums/neutral"
 	"github.com/aiseeq/s2l/protocol/enums/protoss"
 	"github.com/aiseeq/s2l/protocol/enums/terran"
 	"github.com/aiseeq/s2l/protocol/enums/zerg"
@@ -11,9 +12,10 @@ import (
 )
 
 type Ramp struct {
-	Top  point.Point
-	Vec  point.Point
-	Size int
+	Top    point.Point
+	Vec    point.Point
+	Size   int
+	Height float64
 }
 
 type BuildingSize int
@@ -26,6 +28,18 @@ const (
 	S3x3
 	S5x3
 	S5x5
+	UnbuildableRocks
+	BreakableRocks2x2
+	BreakableRocks4x4
+	BreakableRocks4x2
+	BreakableRocks2x4
+	BreakableRocks6x2
+	BreakableRocks2x6
+	BreakableRocks6x6
+	BreakableRocksDiagBLUR
+	BreakableRocksDiagULBR
+	BreakableHorizontalHuge
+	BreakableVerticalHuge
 )
 const (
 	IsBuildable CheckMap = iota + 1
@@ -40,6 +54,63 @@ const (
 	One
 	Two
 )
+
+var DestructibleSize = map[api.UnitTypeID]BuildingSize{
+	neutral.UnbuildableBricksDestructible:          UnbuildableRocks,
+	neutral.UnbuildableBricksSmallUnit:             UnbuildableRocks,
+	neutral.UnbuildableBricksUnit:                  UnbuildableRocks,
+	neutral.UnbuildablePlatesDestructible:          UnbuildableRocks,
+	neutral.UnbuildablePlatesSmallUnit:             UnbuildableRocks,
+	neutral.UnbuildablePlatesUnit:                  UnbuildableRocks,
+	neutral.UnbuildableRocksDestructible:           UnbuildableRocks,
+	neutral.UnbuildableRocksSmallUnit:              UnbuildableRocks,
+	neutral.UnbuildableRocksUnit:                   UnbuildableRocks,
+	neutral.Rocks2x2NonConjoined:                   BreakableRocks2x2,
+	neutral.DestructibleCityDebris4x4:              BreakableRocks4x4,
+	neutral.DestructibleDebris4x4:                  BreakableRocks4x4,
+	neutral.DestructibleIce4x4:                     BreakableRocks4x4,
+	neutral.DestructibleRock4x4:                    BreakableRocks4x4,
+	neutral.DestructibleRockEx14x4:                 BreakableRocks4x4,
+	neutral.DestructibleCityDebris2x4Horizontal:    BreakableRocks4x2,
+	neutral.DestructibleIce2x4Horizontal:           BreakableRocks4x2,
+	neutral.DestructibleRock2x4Horizontal:          BreakableRocks4x2,
+	neutral.DestructibleRockEx12x4Horizontal:       BreakableRocks4x2,
+	neutral.DestructibleCityDebris2x4Vertical:      BreakableRocks2x4,
+	neutral.DestructibleIce2x4Vertical:             BreakableRocks2x4,
+	neutral.DestructibleRock2x4Vertical:            BreakableRocks2x4,
+	neutral.DestructibleRockEx12x4Vertical:         BreakableRocks2x4,
+	neutral.DestructibleCityDebris2x6Horizontal:    BreakableRocks6x2,
+	neutral.DestructibleIce2x6Horizontal:           BreakableRocks6x2,
+	neutral.DestructibleRock2x6Horizontal:          BreakableRocks6x2,
+	neutral.DestructibleRockEx12x6Horizontal:       BreakableRocks6x2,
+	neutral.DestructibleCityDebris2x6Vertical:      BreakableRocks2x6,
+	neutral.DestructibleIce2x6Vertical:             BreakableRocks2x6,
+	neutral.DestructibleRock2x6Vertical:            BreakableRocks2x6,
+	neutral.DestructibleRockEx12x6Vertical:         BreakableRocks2x6,
+	neutral.DestructibleCityDebris6x6:              BreakableRocks6x6,
+	neutral.DestructibleDebris6x6:                  BreakableRocks6x6,
+	neutral.DestructibleExpeditionGate6x6:          BreakableRocks6x6,
+	neutral.DestructibleIce6x6:                     BreakableRocks6x6,
+	neutral.DestructibleRock6x6:                    BreakableRocks6x6,
+	neutral.DestructibleRock6x6Weak:                BreakableRocks6x6,
+	neutral.DestructibleRockEx16x6:                 BreakableRocks6x6,
+	neutral.DestructibleCityDebrisHugeDiagonalBLUR: BreakableRocksDiagBLUR,
+	neutral.DestructibleDebrisRampDiagonalHugeBLUR: BreakableRocksDiagBLUR,
+	neutral.DestructibleIceDiagonalHugeBLUR:        BreakableRocksDiagBLUR,
+	neutral.DestructibleRampDiagonalHugeBLUR:       BreakableRocksDiagBLUR,
+	neutral.DestructibleRockEx1DiagonalHugeBLUR:    BreakableRocksDiagBLUR,
+	neutral.DestructibleCityDebrisHugeDiagonalULBR: BreakableRocksDiagULBR,
+	neutral.DestructibleDebrisRampDiagonalHugeULBR: BreakableRocksDiagULBR,
+	neutral.DestructibleIceDiagonalHugeULBR:        BreakableRocksDiagULBR,
+	neutral.DestructibleRampDiagonalHugeULBR:       BreakableRocksDiagULBR,
+	neutral.DestructibleRockEx1DiagonalHugeULBR:    BreakableRocksDiagULBR,
+	neutral.DestructibleIceHorizontalHuge:          BreakableHorizontalHuge,
+	neutral.DestructibleRampHorizontalHuge:         BreakableHorizontalHuge,
+	neutral.DestructibleRockEx1HorizontalHuge:      BreakableHorizontalHuge,
+	neutral.DestructibleIceVerticalHuge:            BreakableVerticalHuge,
+	neutral.DestructibleRampVerticalHuge:           BreakableVerticalHuge,
+	neutral.DestructibleRockEx1VerticalHuge:        BreakableVerticalHuge,
+}
 
 func (b *Bot) CheckPoints(ps point.Points, check CheckMap) bool {
 	for _, p := range ps {
@@ -81,6 +152,10 @@ func (b *Bot) GetBuildingPoints(ptr point.Pointer, size BuildingSize) point.Poin
 	case S2x1:
 		return point.Points{pos, pos + 1}
 	case S2x2:
+		fallthrough
+	case BreakableRocks2x2:
+		fallthrough
+	case UnbuildableRocks:
 		return point.Points{pos, pos + 1i, pos + 1 + 1i, pos + 1}
 	case S3x3:
 		return append(pos.Neighbours8(1), pos)
@@ -94,8 +169,69 @@ func (b *Bot) GetBuildingPoints(ptr point.Pointer, size BuildingSize) point.Poin
 			}
 		}
 		return ps
+	case BreakableRocks4x2: // non-tested
+		return append(b.GetBuildingPoints(pos, S2x2), b.GetBuildingPoints(pos-2, S2x2)...)
+	case BreakableRocks2x4: // non-tested
+		return append(b.GetBuildingPoints(pos, S2x2), b.GetBuildingPoints(pos-2i, S2x2)...)
+	case BreakableRocks6x2: // non-tested
+		return append(b.GetBuildingPoints(pos, BreakableRocks4x2), b.GetBuildingPoints(pos+2, S2x2)...)
+	case BreakableRocks2x6: // non-tested
+		return append(b.GetBuildingPoints(pos, BreakableRocks2x4), b.GetBuildingPoints(pos+2i, S2x2)...)
+	case BreakableRocks4x4:
+		ps := append(b.GetBuildingPoints(pos, S2x2), b.GetBuildingPoints(pos-2, S2x2)...)
+		ps = append(ps, b.GetBuildingPoints(pos-2i, S2x2)...)
+		ps = append(ps, b.GetBuildingPoints(pos-2-2i, S2x2)...)
+		return ps
+	case BreakableRocks6x6:
+		return append(b.GetBuildingPoints(pos, BreakableRocks4x4),
+			pos-2-3i, pos-1-3i, pos-3i, pos+1-3i, pos-2+2i, pos-1+2i, pos+2i, pos+1+2i,
+			pos-3-2i, pos-3-1i, pos-3, pos-3+1i, pos+2-2i, pos+2-1i, pos+2, pos+2+1i)
+	case BreakableRocksDiagBLUR:
+		ps := point.Points{}
+		for y := -4.0; y <= 6; y++ {
+			switch y {
+			case -4:
+				ps = append(ps, pos-point.Pt(y+2, y))
+			case -3:
+				ps = append(ps, pos-point.Pt(y, y), pos-point.Pt(y+1, y), pos-point.Pt(y+2, y))
+			default:
+				ps = append(ps, pos-point.Pt(y-2, y), pos-point.Pt(y-1, y), pos-point.Pt(y, y),
+					pos-point.Pt(y+1, y), pos-point.Pt(y+2, y))
+			case 4:
+				ps = append(ps, pos-point.Pt(y-2, y), pos-point.Pt(y-1, y), pos-point.Pt(y, y))
+			case 5:
+				ps = append(ps, pos-point.Pt(y-2, y))
+			}
+		}
+		return ps
+	case BreakableRocksDiagULBR:
+		ps := point.Points{}
+		for y := -4.0; y <= 6; y++ {
+			switch y {
+			case -4:
+				ps = append(ps, pos-point.Pt(-y-1, y))
+			case -3:
+				ps = append(ps, pos-point.Pt(-y-1, y), pos-point.Pt(-y, y), pos-point.Pt(-y+1, y))
+			default:
+				ps = append(ps, pos-point.Pt(-y-1, y), pos-point.Pt(-y, y), pos-point.Pt(-y+1, y),
+					pos-point.Pt(-y+2, y), pos-point.Pt(-y+3, y))
+			case 4:
+				ps = append(ps, pos-point.Pt(-y+1, y), pos-point.Pt(-y+2, y), pos-point.Pt(-y+3, y))
+			case 5:
+				ps = append(ps, pos-point.Pt(-y+3, y))
+			}
+		}
+		return ps
+	case BreakableHorizontalHuge:
+		ps := append(b.GetBuildingPoints(pos, BreakableRocks4x4), b.GetBuildingPoints(pos-4, BreakableRocks4x4)...)
+		ps = append(ps, b.GetBuildingPoints(pos+4, BreakableRocks4x4)...)
+		return ps
+	case BreakableVerticalHuge:
+		ps := append(b.GetBuildingPoints(pos, BreakableRocks4x4), b.GetBuildingPoints(pos-4i, BreakableRocks4x4)...)
+		ps = append(ps, b.GetBuildingPoints(pos+4i, BreakableRocks4x4)...)
+		return ps
 	}
-	log.Fatalf("Building size %v is not implemented", size)
+	log.Warningf("Building size %v is not implemented", size)
 	return nil
 }
 
@@ -194,11 +330,19 @@ func (b *Bot) FindClosestPos(ptr point.Pointer, size BuildingSize, cells Pathabl
 	return 0
 }
 
-func (b *Bot) FindClusterTopPoints(cluster *point.Points) point.Points {
+func (b *Bot) FindClusterTopPoints(cluster *point.Points) (point.Points, float64) {
 	var ps point.Points
+	min := math.MaxFloat64
+	max := -min
 	h := math.Inf(-1)
 	for _, p := range *cluster {
 		hp := b.Grid.HeightAt(p)
+		if hp < min {
+			min = hp
+		}
+		if hp > max {
+			max = hp
+		}
 		if hp > h {
 			ps = nil
 			ps.Add(p)
@@ -209,7 +353,7 @@ func (b *Bot) FindClusterTopPoints(cluster *point.Points) point.Points {
 			// lower point, don't add
 		}
 	}
-	return ps
+	return ps, max - min
 }
 
 func (b *Bot) FindRampCluster(p point.Point, cluster *point.Points, rampPoints map[point.Point]bool) {
@@ -255,7 +399,7 @@ func (b *Bot) FindRamps() {
 				continue // Too small for a real ramp
 			}
 
-			top := b.FindClusterTopPoints(&cluster)
+			top, height := b.FindClusterTopPoints(&cluster)
 			if top.Len() == cluster.Len() {
 				continue // Flat - not a ramp
 			}
@@ -273,7 +417,11 @@ func (b *Bot) FindRamps() {
 					}
 					for _, np := range []point.Point{p1, p2, pt} {
 						if b.Grid.IsBuildable(np) {
-							b.Ramps.All = append(b.Ramps.All, Ramp{Top: np, Vec: vec, Size: cluster.Len()})
+							b.Ramps.All = append(b.Ramps.All, Ramp{
+								Top:    np,
+								Vec:    vec,
+								Size:   cluster.Len(),
+								Height: height})
 							break
 						}
 					}
@@ -318,7 +466,8 @@ func (b *Bot) InitLocations() {
 func (b *Bot) InitRamps() {
 	// Find ramps closest to start locations
 	for _, ramp := range b.Ramps.All {
-		if ramp.Size <= 16 {
+		if ramp.Top == 164+44i && ramp.Vec == 1+1i && ramp.Size == 16 ||
+			ramp.Top == 43+44i && ramp.Vec == -1+1i && ramp.Size == 16 {
 			continue // Strange blockaded ramp on Golden Wall
 		}
 		if b.Ramps.My.Top == 0 || ramp.Top.Dist2(b.Locs.MyStart) < b.Ramps.My.Top.Dist2(b.Locs.MyStart) {

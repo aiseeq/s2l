@@ -17,6 +17,15 @@ var Maps2021season1 = []string{
 	"Submarine506",
 }
 
+var MapsProBotsSeason2 = []string{
+	"2000AtmospheresAIE",
+	"BlackburnAIE",
+	"JagannathaAIE",
+	"LightshadeAIE",
+	"OxideAIE",
+	"RomanticideAIE",
+}
+
 // SetMap sets the map to use (via flag)
 func SetMap(name string) {
 	Set("Map", name)

@@ -365,30 +365,51 @@ func (b *Bot) ParseUnits() {
 					}
 				}
 			} else { // api.Alliance_Neutral
-				// todo: correct sizes instead of copypaste
 				var size BuildingSize = 0
+				var unpathable bool
 				pos := u.Point()
-				switch {
-				case u.Radius <= 1:
-					// Nothing
-				case u.Radius >= 1.125 && u.Radius <= 1.25:
-					if u.IsMineral() {
-						size = S2x1
-						pos -= 1
-					} else {
-						size = S2x2
+				if u.IsMineral() {
+					size = S2x1
+					pos -= 1
+					unpathable = true
+				} else {
+					size = DestructibleSize[u.UnitType]
+					switch size {
+					case UnbuildableRocks:
 						pos -= 1 + 1i
+					case BreakableRocks2x2:
+						pos -= 1 + 1i
+						unpathable = true
+					case BreakableRocks4x4:
+						unpathable = true
+					case BreakableRocks4x2:
+						unpathable = true
+					case BreakableRocks2x4:
+						unpathable = true
+					case BreakableRocks6x2:
+						unpathable = true
+					case BreakableRocks2x6:
+						unpathable = true
+					case BreakableRocks6x6:
+						unpathable = true
+					case BreakableRocksDiagBLUR:
+						unpathable = true
+					case BreakableRocksDiagULBR:
+						unpathable = true
+					case BreakableHorizontalHuge:
+						unpathable = true
+					case BreakableVerticalHuge:
+						unpathable = true
+					default:
+						// log.Info(u.UnitType)
 					}
-					/*case u.Radius > 1.25 && u.Radius < 2.75:
-						size = S3x3
-					case u.Radius == 2.75:
-						size = S5x5*/
-				default:
-					// log.Notice("No size for building:", u.UnitType, u.Radius)
 				}
 				if size != 0 {
 					for _, p := range b.GetBuildingPoints(pos, size) {
 						b.Grid.SetBuildable(p, false)
+						if unpathable {
+							b.Grid.SetPathable(p, false)
+						}
 					}
 				}
 			}
