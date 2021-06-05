@@ -195,7 +195,7 @@ func (b *Bot) FindHomeMineralsVector() {
 	b.Locs.MyStartMinVec = vec
 }
 
-func (b *Bot) RenewPaths(once bool) {
+func (b *Bot) RenewPaths(stop <-chan struct{}) {
 	for {
 		b.Grid.Lock()
 		navGrid := grid.New(b.Grid.StartRaw, b.Grid.MapState)
@@ -292,12 +292,19 @@ func (b *Bot) RenewPaths(once bool) {
 		b.Grid.Unlock()
 		b.DebugSend()*/
 
-		if once {
+		select {
+		case <-stop:
 			return
+		default:
 		}
-		// continue // don't wait, more updates!
+
 		for lastLoop+B.FramesPerOrder > b.Loop {
 			time.Sleep(time.Millisecond)
+			select { // Yes, twice. Because if b.Loop doesn't change this will loop forever
+			case <-stop:
+				return
+			default:
+			}
 		}
 	}
 }

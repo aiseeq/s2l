@@ -154,7 +154,7 @@ func MicroMinerals() {
 	cc := B.Units.My[terran.CommandCenter].First()
 	for _, miner := range B.Units.My[terran.SCV] {
 		mfTag := MineralForMiner[miner.Tag]
-		target := TargetForMineral[mfTag] // todo: check if still exist
+		target := TargetForMineral[mfTag]
 		if !miner.IsReturning() && len(miner.Orders) < 2 &&
 			miner.IsFurtherThan(0.75, target) && miner.IsCloserThan(2, target) {
 			miner.CommandPos(ability.Move_Move, target)
@@ -373,13 +373,13 @@ func MiningLib() {
 		if B.Loop >= 102 && B.Loop < 105 {
 			B.RedistributeWorkersToRefineryIfNeeded(B.Units.My[terran.Refinery].First(), B.Units.My[terran.SCV], 3)
 		}
-		B.HandleMiners(B.Units.My[terran.SCV], B.Units.My[terran.CommandCenter], 1)
+		B.HandleMiners(B.Units.My[terran.SCV], B.Units.My[terran.CommandCenter], nil, 1, point.Pt0())
 		BuildSCVs()
 	} else if B.MyRace() == api.Race_Zerg {
 		if B.Loop >= 102 && B.Loop < 105 {
 			B.RedistributeWorkersToRefineryIfNeeded(B.Units.My[zerg.Hatchery].First(), B.Units.My[zerg.Drone], 3)
 		}
-		B.HandleMiners(B.Units.My[zerg.Drone], B.Units.My[zerg.Hatchery], 1)
+		B.HandleMiners(B.Units.My[zerg.Drone], B.Units.My[zerg.Hatchery], nil, 1, point.Pt0())
 		BuildDrones()
 	}
 	CheckTime()
@@ -472,7 +472,8 @@ func main() {
 			B = scl.New(c, nil)
 			B.FramesPerOrder = 3
 			B.LastLoop = -math.MaxInt
-			B.Init(true) // we don't need to renew paths here
+			stop := make(chan struct{})
+			B.Init(stop)
 
 			MineralForMiner = map[api.UnitTag]api.UnitTag{}
 			// CCForMiner = map[api.UnitTag]api.UnitTag{}
@@ -492,6 +493,8 @@ func main() {
 
 				B.UpdateObservation()
 			}
+			stop <- struct{}{}
+
 			times[mapName] = append(times[mapName], float64(B.Obs.Score.ScoreDetails.CollectedMinerals))
 			// times[mapName] = append(times[mapName], float64(B.Obs.Score.ScoreDetails.CollectedVespene))
 		}

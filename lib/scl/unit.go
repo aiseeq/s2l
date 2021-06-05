@@ -264,9 +264,8 @@ func (u *Unit) GetWayMap(safe bool) (*grid.Grid, WaypointsMap) {
 }
 
 func (u *Unit) GroundTowards(ptr point.Pointer, offset float64, safe bool) point.Point {
-	// slow, todo: use something else
 	navGrid, waymap := u.GetWayMap(safe)
-	path, _ := NavPath(navGrid, waymap, u, ptr)
+	path, _ := NavPath(navGrid, waymap, u, ptr) // This function eats most (~20%) of the main thread
 	if path.Len() > 1 {
 		return u.Towards(path[1], offset)
 	}
@@ -542,7 +541,7 @@ func (u *Unit) CanAttack(us Units, gap float64) Units {
 	return us.InRangeOf(u, gap)
 }
 
-func (u *Unit) AssessStrength(attackers Units, closeCircle float64) (outranged, stronger bool) {
+func (u *Unit) AssessStrength(attackers Units) (outranged, stronger bool) {
 	var maxRangeUnit *Unit
 	if Ground(u) {
 		maxRangeUnit = attackers.Max(CmpGroundRange)
@@ -553,10 +552,10 @@ func (u *Unit) AssessStrength(attackers Units, closeCircle float64) (outranged, 
 		outranged = maxRangeUnit.AirRange() >= math.Max(u.GroundRange(), u.AirRange())
 	}
 	if outranged {
-		friendsScore := B.Units.My.All().CloserThan(closeCircle, u).Sum(CmpTotalScore)
-		enemiesScore := B.Enemies.AllReady.CloserThan(closeCircle, maxRangeUnit).Sum(CmpTotalScore)
+		friendsScore := B.Units.My.All().CloserThan(7, u).Sum(CmpTotalScore) // todo: test const here
+		enemiesScore := B.Enemies.AllReady.CloserThan(7, maxRangeUnit).Sum(CmpTotalScore)
 		// log.Info(friendsScore, enemiesScore)
-		if friendsScore*1.25 >= enemiesScore { // todo: test multiplier here
+		if friendsScore*B.TestVal >= enemiesScore { // todo: test multiplier here (1.25)
 			stronger = true
 		}
 	}
@@ -713,7 +712,7 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 	return fbp, isSafe
 }*/
 
-func (u *Unit) GroundFallback(safePos point.Point) {
+func (u *Unit) GroundFallback(safePos point.Pointer) {
 	if !u.IsCoolToMove() {
 		return // Don't move until attack is done
 	}
@@ -897,7 +896,7 @@ func (u *Unit) AttackMove(target point.Pointer) {
 			pos, safe = u.GroundEvade(enemies, 2, npos)
 		}
 		if !safe {
-			outranged, stronger := u.AssessStrength(enemies, 7)
+			outranged, stronger := u.AssessStrength(enemies)
 			if !outranged || stronger {
 				safe = true
 			}
@@ -946,6 +945,19 @@ func (u *Unit) AttackCustom(attackFunc AttackFunc, moveFunc MoveFunc, targetsGro
 
 func (u *Unit) Attack(targetsGroups ...Units) { // Targets in priority from higher to lower
 	u.AttackCustom(DefaultAttackFunc, DefaultMoveFunc, targetsGroups...)
+}
+
+func (u *Unit) IsSafeToApproach(p point.Pointer) bool {
+	if !B.SafeGrid.IsPathable(p) {
+		if pathablePos := B.FindClosestPathable(B.SafeGrid, p); pathablePos != 0 {
+			p = pathablePos
+		}
+	}
+	navGrid, waymap := u.GetWayMap(true)
+	if path, _ := NavPath(navGrid, waymap, u, p); path == nil {
+		return false
+	}
+	return true
 }
 
 // Filters

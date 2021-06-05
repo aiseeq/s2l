@@ -20,6 +20,7 @@ type Bot struct {
 	Data          *api.ResponseData
 	Info          *api.ResponseGameInfo
 	Chat          []*api.ChatReceived
+	Result        []*api.PlayerResult
 	Actions       actions.Actions
 	Cmds          *CommandsStack
 	DebugCommands []*api.DebugCommand
@@ -48,7 +49,7 @@ type Bot struct {
 		Neutral  UnitsByTypes
 		ByTag    map[api.UnitTag]*Unit
 	}
-	Enemies struct { // todo: same for my units
+	Enemies struct {
 		All      Units
 		AllReady Units
 		Visible  Units
@@ -113,6 +114,8 @@ type Bot struct {
 	FoodLeft         int
 
 	UnitCreatedCallback func(unit *Unit)
+
+	TestVal float64
 }
 
 var B *Bot // Pointer to the last created bot. It should be the only global here
@@ -123,7 +126,7 @@ const ResourceSpreadDistance = 9
 const minRampSize = 10
 const airSpeedBoostRange = 5
 const samePoint = 0.1
-const KD8Radius = 1.75 // todo: exact data
+const KD8Radius = 1.75
 
 func (b *Bot) UpdateObservation() {
 	o, err := b.Client.Observation(api.RequestObservation{})
@@ -133,7 +136,8 @@ func (b *Bot) UpdateObservation() {
 	}
 	b.Obs = o.Observation
 	b.Chat = o.Chat
-	// todo: Action, ActionError, PlayerResult
+	b.Result = o.PlayerResult
+	// todo: Action, ActionError
 }
 
 func (b *Bot) UpdateData() {
@@ -170,7 +174,7 @@ func New(client *client.Client, ucc func(unit *Unit)) *Bot {
 	return &b
 }
 
-func (b *Bot) Init(renewPathsOnce bool) {
+func (b *Bot) Init(stop <-chan struct{}) {
 	// Init unit data
 	b.U.Types = []*api.UnitTypeData{}
 	b.U.GroundAttackCircle = map[api.UnitTypeID]point.Points{}
@@ -191,17 +195,18 @@ func (b *Bot) Init(renewPathsOnce bool) {
 	// Проблема в том, что есть большая разница между выстрелом после разворота и выстрелом без него
 	// todo: как-то учитывать начальное направление взгляда юнита?
 	b.U.AfterAttack = AttackDelays{
+		terran.AutoTurret:  6,
 		terran.Cyclone:     6,
 		terran.Hellion:     6,
 		terran.HellionTank: 6,
+		terran.Reaper:      6, // todo: всё равно иногда не достаточно (редко)
+		terran.SCV:         6,
 		terran.Thor:        24, // todo: он может двигаться быстрее, если была воздушная атака
 		terran.ThorAP:      24,
-		terran.SCV:         6,
-		terran.Reaper:      6, // todo: всё равно иногда не достаточно (редко)
-		zerg.Queen:         6,
 		zerg.Drone:         6,
-		protoss.Stalker:    6,
+		zerg.Queen:         6,
 		protoss.Probe:      6,
+		protoss.Stalker:    6,
 	}
 	b.U.BeforeAttack = AttackDelays{ // Before next attack - increase if unit switches but not attacking
 		terran.Banshee:         18, // долго ракеты летят
@@ -228,7 +233,7 @@ func (b *Bot) Init(renewPathsOnce bool) {
 	b.InitMining()
 	b.FindRamps()
 	b.InitRamps()
-	go b.RenewPaths(renewPathsOnce)
+	go b.RenewPaths(stop)
 }
 
 func (b *Bot) AddToCluster(enemy *Unit, c *Cluster) {
@@ -505,7 +510,7 @@ func (b *Bot) RequestAvailableAbilities(irr bool, us ...*Unit) {
 	for _, rqaa := range resp.Abilities {
 		for _, aa := range rqaa.Abilities {
 			as := amap[rqaa.UnitTag]
-			as = append(as, api.AbilityID(aa.AbilityId))
+			as = append(as, aa.AbilityId)
 			amap[rqaa.UnitTag] = as
 		}
 	}
