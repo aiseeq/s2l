@@ -14,7 +14,7 @@ import (
 var (
 	launchBaseBuild        = uint32(0)
 	launchDataVersion      = ""
-	launchPortStart        = 8168
+	LaunchPortStart        = 8168
 	launchExtraCommandArgs = []string(nil)
 )
 
@@ -49,7 +49,7 @@ func StartProcess(path string, args []string) int {
 
 func (config *GameConfig) LaunchAndAttach(path string, c *Client) ProcessInfo {
 	pi := ProcessInfo{}
-	pi.Port = launchPortStart
+	pi.Port = LaunchPortStart
 
 	// See if we can connect to an old instance real quick before launching
 	if err := c.TryConnect(config.netAddress, pi.Port); err != nil {
@@ -118,5 +118,5 @@ func (config *GameConfig) LaunchProcess(client *Client) ProcessInfo {
 func (config *GameConfig) LaunchStarcraft() {
 	config.processInfo = config.LaunchProcess(config.Client)
 	config.started = true
-	config.lastPort = launchPortStart
+	config.lastPort = LaunchPortStart
 }

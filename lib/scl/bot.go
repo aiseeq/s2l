@@ -114,8 +114,6 @@ type Bot struct {
 	FoodLeft         int
 
 	UnitCreatedCallback func(unit *Unit)
-
-	TestVal float64
 }
 
 var B *Bot // Pointer to the last created bot. It should be the only global here
