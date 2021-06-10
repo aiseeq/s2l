@@ -552,10 +552,10 @@ func (u *Unit) AssessStrength(attackers Units) (outranged, stronger bool) {
 		outranged = maxRangeUnit.AirRange() >= math.Max(u.GroundRange(), u.AirRange())
 	}
 	if outranged {
-		friendsScore := B.Units.My.All().CloserThan(8, u).Sum(CmpTotalScore)
-		enemiesScore := B.Enemies.AllReady.CloserThan(8, maxRangeUnit).Sum(CmpTotalScore)
+		friendsScore := B.Units.My.All().CloserThan(7, u).Sum(CmpTotalScore)
+		enemiesScore := B.Enemies.AllReady.CloserThan(7, maxRangeUnit).Sum(CmpTotalScore)
 		// log.Info(friendsScore, enemiesScore)
-		if friendsScore*1.3 >= enemiesScore {
+		if friendsScore*1.25 >= enemiesScore {
 			stronger = true
 		}
 	}
@@ -761,6 +761,10 @@ func (u *Unit) EstimatePositionAfter(frames int) point.Point {
 
 func (u *Unit) FramesToPos(ptr point.Pointer) float64 {
 	return u.Dist(ptr) / u.Speed() * 22.4
+}
+
+func (u *Unit) FramesToDistantPos(ptr point.Pointer) float64 {
+	return B.RequestPathing(u, ptr) / u.Speed() * 22.4
 }
 
 func (u *Unit) TargetAbility() api.AbilityID {

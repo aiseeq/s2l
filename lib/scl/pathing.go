@@ -199,31 +199,22 @@ func (b *Bot) RenewPaths(stop <-chan struct{}) {
 	for {
 		b.Grid.Lock()
 		navGrid := grid.New(b.Grid.StartRaw, b.Grid.MapState)
-		// this also locks units remap todo: separate?
-		reapersExists := b.Units.My[terran.Reaper].Exists()
 		b.Grid.Unlock()
+		safeGrid := grid.New(navGrid.StartRaw, navGrid.MapState)
+
+		reapersExists := b.Units.My[terran.Reaper].Exists()
+		var reaperGrid, reaperSafeGrid *grid.Grid
+		if reapersExists {
+			reaperGrid = grid.New(navGrid.StartRaw, navGrid.MapState)
+			reaperSafeGrid = grid.New(navGrid.StartRaw, navGrid.MapState)
+		}
 
 		lastLoop := b.Loop
-
-		/*if b.HomePaths == nil { // don't rebuild them
-			b.HomePaths = b.FindPaths(navGrid, b.Locs.MyStart-b.Locs.MyStartMinVec*3, false)
-			// log.Info(time.Now().Sub(start))
-			b.HomeReaperPaths = b.FindPaths(navGrid, b.Locs.MyStart-b.Locs.MyStartMinVec*3, true)
-			for key, pos := range b.Locs.MyExps {
-				if !navGrid.IsBuildable(pos) {
-					b.ExpPaths[key] = b.FindPaths(navGrid, pos-b.Locs.MyStartMinVec*3, false)
-				}
-			}
-			// b.DebugPath(b.HomeReaperPaths.From(b.EnemyRamp.Top))
-			// b.DebugSend()
-		}*/
 
 		// s := time.Now()
 		b.WayMap = b.FindWaypointsMap(navGrid)
 
 		if reapersExists {
-			// Need to renew it because it can't be locked somewhere else
-			reaperGrid := grid.New(navGrid.StartRaw, navGrid.MapState)
 			pa := b.Info.StartRaw.PlayableArea
 			for y := pa.P0.Y; y <= pa.P1.Y; y++ {
 				for x := pa.P0.X; x <= pa.P1.X; x++ {
@@ -250,6 +241,7 @@ func (b *Bot) RenewPaths(stop <-chan struct{}) {
 						(reaperGrid.IsPathable(pul) && reaperGrid.IsPathable(pdr) &&
 							reaperGrid.HeightAt(pul) != reaperGrid.HeightAt(pdr)) {
 						reaperGrid.SetPathable(p, true)
+						reaperSafeGrid.SetPathable(p, true)
 					}
 				}
 			}
@@ -258,11 +250,6 @@ func (b *Bot) RenewPaths(stop <-chan struct{}) {
 		}
 
 		// s := time.Now()
-		safeGrid := grid.New(navGrid.StartRaw, navGrid.MapState)
-		var reaperSafeGrid *grid.Grid
-		if reapersExists {
-			reaperSafeGrid = grid.New(navGrid.StartRaw, navGrid.MapState)
-		}
 		for _, u := range b.Enemies.AllReady {
 			pos := u.Point().Floor()
 			ps := b.U.GroundAttackCircle[u.UnitType]

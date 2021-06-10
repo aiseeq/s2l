@@ -479,12 +479,12 @@ func (b *Bot) InitRamps() {
 	}
 }
 
-func (b *Bot) RequestPathing(p1, p2 point.Point) float64 {
+func (b *Bot) RequestPathing(p1, p2 point.Pointer) float64 {
 	rqps := []*api.RequestQueryPathing{{
 		Start: &api.RequestQueryPathing_StartPos{
-			StartPos: p1.To2D(),
+			StartPos: p1.Point().To2D(),
 		},
-		EndPos: p2.To2D(),
+		EndPos: p2.Point().To2D(),
 	}}
 	if resp, err := B.Client.Query(api.RequestQuery{Pathing: rqps}); err != nil || len(resp.Pathing) == 0 {
 		log.Error(err)
