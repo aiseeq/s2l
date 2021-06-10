@@ -495,10 +495,14 @@ func (b *Bot) RequestPathing(p1, p2 point.Pointer) float64 {
 }
 
 func (b *Bot) RequestPlacement(ability api.AbilityID, pos point.Point, builder *Unit) bool {
+	var tag api.UnitTag
+	if builder != nil {
+		tag = builder.Tag
+	}
 	rps := []*api.RequestQueryBuildingPlacement{{
 		AbilityId:      ability,
 		TargetPos:      pos.To2D(),
-		PlacingUnitTag: builder.Tag,
+		PlacingUnitTag: tag,
 	}}
 	if resp, err := B.Client.Query(api.RequestQuery{Placements: rps}); err != nil || len(resp.Placements) == 0 {
 		log.Error(err)

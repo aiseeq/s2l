@@ -198,7 +198,7 @@ func (b *Bot) Init(stop <-chan struct{}) {
 		terran.Hellion:     6,
 		terran.HellionTank: 6,
 		terran.Reaper:      6, // todo: всё равно иногда не достаточно (редко)
-		terran.SCV:         6,
+		terran.SCV:         9,
 		terran.Thor:        24, // todo: он может двигаться быстрее, если была воздушная атака
 		terran.ThorAP:      24,
 		zerg.Drone:         6,
