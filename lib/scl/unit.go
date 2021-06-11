@@ -657,61 +657,6 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 	return u.Point() + escVec, false
 }
 
-/*func (u *Unit) GroundFallbackPos(enemies Units, gap float64, safePath Steps, dist int) (point.Point, bool) { // bool = is safe
-	safePos := safePath.Follow(u, dist)
-	if safePos == 0 {
-		safePos = B.Locs.MyStart
-	}
-	if enemies.Empty() {
-		return safePos, true
-	}
-
-	// Copy of unit
-	cu := *u
-	// Move it to the new position
-	cu.Pos = safePos.To3D()
-	// escVec := (safePos - p).Norm()
-	score := 0.0
-	for _, e := range enemies {
-		// RangeDelta < 0 if unit in range
-		rd := e.RangeDelta(&cu, gap)
-		if rd < 0 {
-			score += e.GroundDPS() * (1 - rd/(e.GroundRange()+float64(e.Radius+u.Radius)))
-		}
-	}
-	fbp := safePos
-
-	var prevPoint point.Point
-	for x := 0.0; x < 16; x++ {
-		vec := point.Pt(1, 0).Rotate(math.Pi * 2.0 / 16.0 * x)
-		nextPoint := u.Point() + vec.Mul(float64(dist))
-		if prevPoint.Floor() == nextPoint.Floor() || !B.Grid.IsPathable(nextPoint) {
-			continue
-		}
-
-		// Copy of unit
-		cu := *u
-		// Move it to the new position
-		cu.Pos = nextPoint.To3D()
-		newScore := 0.0
-		for _, e := range enemies {
-			rd := e.RangeDelta(&cu, gap)
-			if rd < 0 {
-				newScore += e.GroundDPS() * (1 - rd/(e.GroundRange()+float64(e.Radius+u.Radius)))
-			}
-		}
-
-		if newScore < score {
-			fbp = nextPoint
-			score = newScore
-		}
-		prevPoint = nextPoint
-	}
-
-	isSafe := fbp == safePos
-	return fbp, isSafe
-}*/
-
 func (u *Unit) GroundFallback(safePos point.Pointer) {
 	if !u.IsCoolToMove() {
 		return // Don't move until attack is done
@@ -879,9 +824,11 @@ func (u *Unit) EvadeEffectsPos(ptr point.Pointer, checkKD8 bool, eids ...api.Eff
 	return upos, true
 }
 
-func (u *Unit) AttackMove(target point.Pointer) {
-	npos := u.Towards(target, 2)
-	if !u.IsFlying {
+func (u *Unit) AttackMove(target *Unit) {
+	dist := u.Dist(target)
+	rads := float64(u.Radius + target.Radius)
+	npos := u.Towards(target, math.Min(2, dist-rads))
+	if !u.IsFlying && dist-rads > 2 {
 		if p := u.GroundTowards(target, 2, false); p != 0 {
 			npos = p
 		}
@@ -899,7 +846,7 @@ func (u *Unit) AttackMove(target point.Pointer) {
 		} else {
 			pos, safe = u.GroundEvade(enemies, 2, npos)
 		}
-		if !safe {
+		if !safe && target.Cloak != api.CloakState_Cloaked {
 			outranged, stronger := u.AssessStrength(enemies)
 			if !outranged || stronger {
 				safe = true

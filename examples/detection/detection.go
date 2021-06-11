@@ -62,7 +62,8 @@ func main() {
 	B = scl.New(c, nil)
 	B.FramesPerOrder = 3
 	B.LastLoop = -math.MaxInt
-	B.Init(true) // we don't need to renew paths here
+	stop := make(chan struct{})
+	B.Init(stop)
 
 	AddDebug()
 
@@ -79,4 +80,5 @@ func main() {
 
 		B.UpdateObservation()
 	}
+	stop <- struct{}{}
 }
