@@ -542,19 +542,17 @@ func (u *Unit) CanAttack(us Units, gap float64) Units {
 }
 
 func (u *Unit) AssessStrength(attackers Units) (outranged, stronger bool) {
-	var maxRangeUnit *Unit
+	closestUnit := attackers.ClosestTo(u)
 	if Ground(u) {
-		maxRangeUnit = attackers.Max(CmpGroundRange)
-		outranged = maxRangeUnit.GroundRange() >= u.GroundRange()
+		outranged = closestUnit.GroundRange() >= u.GroundRange()
 	}
 	if Flying(u) {
-		maxRangeUnit = attackers.Max(CmpAirRange)
-		outranged = maxRangeUnit.AirRange() >= math.Max(u.GroundRange(), u.AirRange())
+		outranged = closestUnit.AirRange() >= math.Max(u.GroundRange(), u.AirRange())
 	}
 	if outranged {
 		friendsScore := B.Units.My.All().CloserThan(7, u).Sum(CmpTotalScore)
-		enemiesScore := B.Enemies.AllReady.CloserThan(7, maxRangeUnit).Sum(CmpTotalScore)
-		// log.Info(friendsScore, enemiesScore)
+		enemiesScore := B.Enemies.AllReady.CloserThan(7, closestUnit).Sum(CmpTotalScore)
+		// log.Info(friendsScore, enemiesScore, friendsScore*1.25 >= enemiesScore)
 		if friendsScore*1.25 >= enemiesScore {
 			stronger = true
 		}
