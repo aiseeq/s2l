@@ -542,7 +542,11 @@ func (u *Unit) CanAttack(us Units, gap float64) Units {
 }
 
 func (u *Unit) AssessStrength(attackers Units) (outranged, stronger bool) {
-	closestUnit := attackers.ClosestTo(u)
+	closestUnit := attackers.CanAttack(u, 4).ClosestTo(u)
+	if closestUnit == nil {
+		stronger = true
+		return
+	}
 	if Ground(u) {
 		outranged = closestUnit.GroundRange() >= u.GroundRange()
 	}
