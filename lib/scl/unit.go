@@ -654,7 +654,7 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 }
 
 func (u *Unit) GroundFallback(safePos point.Pointer) {
-	if !u.IsCoolToMove() {
+	if !u.IsCoolToMove() || !u.IsCoolToAttackAgain() {
 		return // Don't move until attack is done
 	}
 	// fbp, _ := u.GroundFallbackPos(enemies, gap, safePath, 5)
