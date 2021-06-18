@@ -24,6 +24,7 @@ type Bot struct {
 	Actions       actions.Actions
 	Cmds          *CommandsStack
 	DebugCommands []*api.DebugCommand
+	RecentEffects [][]*api.Effect // This needed because corrosive biles disappear from effects to early
 
 	Locs struct {
 		MapCenter       point.Point
@@ -469,6 +470,10 @@ func (b *Bot) ParseObservation() {
 		for _, uid := range b.Obs.RawData.Player.UpgradeIds {
 			b.Upgrades[b.U.Upgrades[uid].AbilityId] = true
 		}
+	}
+	b.RecentEffects = append(b.RecentEffects, B.Obs.RawData.Effects) // Fixes corosive biles early disappearence
+	if len(b.RecentEffects) > 7 {                                    // 21 frames
+		b.RecentEffects = b.RecentEffects[1:]
 	}
 }
 

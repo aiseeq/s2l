@@ -770,7 +770,7 @@ func DefaultAttackFunc(u *Unit, priority int, targets Units) bool {
 		return false // Don't focus on secondary targets if weapons are not cool yet
 	}
 	closeTargets := targets.Filter(Visible).InRangeOf(u, 0)
-	if closeTargets.Exists() {
+	if closeTargets.Exists() && u.IsCoolToAttack() {
 		target := closeTargets.Min(func(unit *Unit) float64 {
 			return unit.Hits
 		})
@@ -782,10 +782,33 @@ func DefaultAttackFunc(u *Unit, priority int, targets Units) bool {
 	return false
 }
 
+func (u *Unit) GetEffectsList() []api.EffectID {
+	// todo: move into safe grids
+	effects := []api.EffectID{effect.PsiStorm, effect.CorrosiveBile}
+	if !u.IsFlying {
+		effects = append(effects, effect.LiberatorDefenderZoneSetup, effect.LiberatorDefenderZone,
+			effect.ThermalLance, effect.BlindingCloud, effect.LurkerSpines, effect.TemporalFieldGrowing,
+			effect.TemporalField)
+	}
+	return effects
+}
+
+func (u *Unit) EvadeEffects() bool {
+	pos, safe := u.EvadeEffectsPos(u, true, u.GetEffectsList()...)
+	if !safe {
+		u.CommandPos(ability.Move, pos)
+		return true
+	}
+	return false
+}
+
 func DefaultMoveFunc(u *Unit, target *Unit) {
 	// Unit need to be closer to the target to shoot?
 	if !u.InRange(target, -0.1) || !target.IsVisible() || !target.IsPosVisible() {
 		u.AttackMove(target)
+	} else {
+		// Evade effects
+		u.EvadeEffects()
 	}
 }
 
@@ -796,7 +819,7 @@ func (u *Unit) EvadeEffectsPos(ptr point.Pointer, checkKD8 bool, eids ...api.Eff
 		kds := append(B.Units.My[terran.KD8Charge], B.Units.Enemy[terran.KD8Charge]...)
 		if kds.Exists() {
 			kd := kds.ClosestTo(upos)
-			gap := upos.Dist(kd) - float64(u.Radius) - KD8Radius - 0.1
+			gap := upos.Dist(kd) - float64(u.Radius) - KD8Radius - 0.5
 			// Negative if under effect
 			if gap < 0 {
 				// Negative towards = outwards
@@ -807,17 +830,19 @@ func (u *Unit) EvadeEffectsPos(ptr point.Pointer, checkKD8 bool, eids ...api.Eff
 			}
 		}
 	}
-	for _, e := range B.Obs.RawData.Effects {
+	for _, e := range append(B.Obs.RawData.Effects, B.RecentEffects[0]...) {
 		for _, eid := range eids {
 			if e.EffectId == eid {
 				for _, p2 := range e.Pos {
 					p := point.Pt2(p2)
-					gap := upos.Dist(p) - float64(B.U.Effects[eid].Radius+u.Radius) - 0.1
+					gap := upos.Dist(p) - float64(B.U.Effects[eid].Radius+u.Radius) - 0.5
 					if gap < 0 {
 						pos := upos.Towards(p, gap-1)
-						if u.IsFlying || B.Grid.IsPathable(pos) {
-							return pos, false
+						if upos == p {
+							// Rare case when effect is directly above the unit (not so rare vs bots)
+							pos = upos.Towards(B.Locs.MapCenter, gap-1)
 						}
+						return pos, false
 					}
 				}
 			}
@@ -835,23 +860,23 @@ func (u *Unit) AttackMove(target *Unit) {
 			npos = p
 		}
 	}
-	// todo: move into safe grids
-	effects := []api.EffectID{effect.PsiStorm, effect.CorrosiveBile}
-	if !u.IsFlying {
-		effects = append(effects, effect.LiberatorDefenderZoneSetup, effect.LiberatorDefenderZone)
-	}
-	pos, safe := u.EvadeEffectsPos(npos, true, effects...)
+
+	effects := u.GetEffectsList()
+	pos, safe := u.EvadeEffectsPos(u, true, effects...)
 	if safe {
-		enemies := B.Enemies.AllReady
-		if u.IsFlying {
-			pos, safe = u.AirEvade(enemies, 2, npos)
-		} else {
-			pos, safe = u.GroundEvade(enemies, 2, npos)
-		}
-		if !safe && target.Cloak != api.CloakState_Cloaked {
-			outranged, stronger := u.AssessStrength(enemies)
-			if !outranged || stronger {
-				safe = true
+		pos, safe = u.EvadeEffectsPos(npos, true, effects...)
+		if safe {
+			enemies := B.Enemies.AllReady
+			if u.IsFlying {
+				pos, safe = u.AirEvade(enemies, 2, npos)
+			} else {
+				pos, safe = u.GroundEvade(enemies, 2, npos)
+			}
+			if !safe && target.Cloak != api.CloakState_Cloaked {
+				outranged, stronger := u.AssessStrength(enemies)
+				if !outranged || stronger {
+					safe = true
+				}
 			}
 		}
 	}
