@@ -554,8 +554,8 @@ func (u *Unit) AssessStrength(attackers Units) (outranged, stronger bool) {
 		outranged = closestUnit.AirRange() >= math.Max(u.GroundRange(), u.AirRange())
 	}
 	if outranged {
-		friendsScore := B.Units.My.All().CloserThan(7, u).Sum(CmpTotalScore)
-		enemiesScore := B.Enemies.AllReady.CloserThan(7, closestUnit).Sum(CmpTotalScore)
+		friendsScore := B.Units.My.All().CloserThan(7, u).Filter(DpsGt5).Sum(CmpTotalScore)
+		enemiesScore := B.Enemies.AllReady.CloserThan(7, closestUnit).Filter(DpsGt5).Sum(CmpTotalScore)
 		// log.Info(friendsScore, enemiesScore, friendsScore*1.25 >= enemiesScore)
 		if friendsScore*1.25 >= enemiesScore {
 			stronger = true
@@ -572,10 +572,7 @@ func (u *Unit) AirEvade(enemies Units, gap float64, ptr point.Pointer) (point.Po
 
 	// Copy of unit
 	cu := *u
-	delta := pos - cu.Point()
-	if delta.Len() > 1 {
-		delta = delta.Norm()
-	}
+	delta := (pos - u.Point()).Norm()
 	// Move it 1 cell to the new desirable position
 	cu.Pos = (cu.Point() + delta).To3D()
 	// Enemy with largest range overlap
@@ -588,19 +585,19 @@ func (u *Unit) AirEvade(enemies Units, gap float64, ptr point.Pointer) (point.Po
 		return pos, true // Unit can just move to desired position
 	}
 	// Move to enemy range border
-	if outrange > -1 { // Close to the border, less than 1
-		rangeVec := (cu.Point() - hazard.Point()).Norm().Mul(-outrange)
-		tangVec := (rangeVec * 1i).Mul(math.Sqrt(1 - outrange*outrange))
-		p1 := cu.Point() + rangeVec + tangVec
-		p2 := cu.Point() + rangeVec - tangVec
-		if p1.Dist2(u) > p2.Dist2(u) {
-			return u.Point() + (p1 - cu.Point()).Norm().Mul(airSpeedBoostRange), false
+	if outrange > -1 && u.IsNot(terran.Medivac, terran.Raven) { // Close to the border, less than 1
+		// Not for units without attack
+		rangeVec := (u.Point() - hazard.Point()).Norm()
+		tangVec := (rangeVec * 1i).Mul(airSpeedBoostRange)
+		p1 := u.Point() + tangVec
+		p2 := u.Point() - tangVec
+		if p1.Dist2(pos) < p2.Dist2(pos) {
+			return p1, false
 		}
-		return u.Point() + (p2 - cu.Point()).Norm().Mul(airSpeedBoostRange), false
+		return p2, false
 	}
-	// Move directly from enemy (actually, not totally directly, little towards desired direction)
-	escVec := (pos - hazard.Point()).Norm().Mul(airSpeedBoostRange)
-	return u.Point() + escVec, false
+	// Move directly from enemy
+	return u.Towards(hazard, -airSpeedBoostRange), false
 }
 
 func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point.Point, bool) { // bool = is safe
@@ -609,10 +606,7 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 		return pos, true // Unit can just move to desired position
 	}
 
-	delta := u.PosDelta.Norm()
-	if u.PosDelta == 0 {
-		delta = (enemies.Center() - u.Point()).Norm()
-	}
+	delta := (pos - u.Point()).Norm()
 
 	// Copy of unit
 	cu := *u
@@ -630,18 +624,18 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 	// Move to enemy range border
 	var escVec point.Point
 	if outrange > -1 {
-		rangeVec := (cu.Point() - hazard.Point()).Norm().Mul(-outrange)
-		tangVec := (rangeVec * 1i).Mul(math.Sqrt(1 - outrange*outrange))
-		p1 := cu.Point() + rangeVec + tangVec
-		p2 := cu.Point() + rangeVec - tangVec
-		if p1.Dist2(u) > p2.Dist2(u) {
-			escVec = (p1 - cu.Point()).Norm().Mul(airSpeedBoostRange)
+		rangeVec := (u.Point() - hazard.Point()).Norm()
+		tangVec := rangeVec * 1i
+		p1 := u.Point() + tangVec
+		p2 := u.Point() - tangVec
+		if p1.Dist2(pos) < p2.Dist2(pos) {
+			escVec = p1
 		} else {
-			escVec = (p2 - cu.Point()).Norm().Mul(airSpeedBoostRange)
+			escVec = p2
 		}
 	} else {
 		// Move directly from enemy
-		escVec = (pos - hazard.Point()).Norm().Mul(airSpeedBoostRange)
+		escVec = (u.Point() - hazard.Point()).Norm()
 	}
 	if !B.Grid.IsPathable(u.Point() + escVec) {
 		for x := 1.0; x < 4; x++ {
@@ -654,7 +648,7 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 				return esc2, false
 			}
 		}
-		return B.Locs.MyStart, false // Try to go home
+		return B.Locs.MyStart.Towards(B.Locs.MapCenter, -3), false // Try to go home
 	}
 	return u.Point() + escVec, false
 }
@@ -683,9 +677,6 @@ func (u *Unit) GroundFallback(safePos point.Pointer) {
 		if pos != 0 {
 			fbp = pos
 		}
-	}
-	if u.WeaponCooldown > 0 && u.PosDelta == 0 {
-		u.SpamCmds = true
 	}
 	u.CommandPos(ability.Move, fbp)
 }
@@ -879,9 +870,6 @@ func (u *Unit) AttackMove(target *Unit) {
 				}
 			}
 		}
-	}
-	if u.WeaponCooldown > 0 && u.PosDelta == 0 {
-		u.SpamCmds = true // Spamming this thing is the key. Or orders will be ignored (or postponed)
 	}
 	if safe {
 		// Move closer
