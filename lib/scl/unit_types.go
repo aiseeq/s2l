@@ -133,11 +133,11 @@ func (tt TagsByTypes) Len(ut api.UnitTypeID) int {
 	return len(tt[B.U.UnitAliases.Min(ut)])
 }
 
-func (tt TagsByTypes) Score(uts ...api.UnitTypeID) float64 {
-	score := 0.0
+func (tt TagsByTypes) Score(uts ...api.UnitTypeID) int {
+	score := 0
 	for _, ut := range uts {
 		ut = B.U.UnitAliases.Min(ut)
-		score += float64(len(tt[ut])) * float64(B.U.Types[ut].MineralCost+B.U.Types[ut].VespeneCost)
+		score += len(tt[ut]) * int(B.U.Types[ut].MineralCost+B.U.Types[ut].VespeneCost)
 	}
 	return score
 }

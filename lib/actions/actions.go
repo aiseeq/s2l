@@ -7,10 +7,10 @@ import (
 
 type Actions []*api.Action
 
-func (a *Actions) ChatSend(msg string) {
+func (a *Actions) ChatSend(msg string, channel api.ActionChat_Channel) {
 	*a = append(*a, &api.Action{
 		ActionChat: &api.ActionChat{
-			Channel: api.ActionChat_Broadcast,
+			Channel: channel,
 			Message: msg,
 		},
 	})

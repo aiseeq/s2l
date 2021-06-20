@@ -938,7 +938,7 @@ func Structure(u *Unit) bool  { return u.IsStructure() }
 func Flying(u *Unit) bool     { return u.IsFlying || u.UnitType == protoss.Colossus }
 func Ground(u *Unit) bool     { return !u.IsFlying || u.UnitType == protoss.Colossus }
 func NotWorker(u *Unit) bool  { return !u.IsWorker() }
-func DpsGt5(u *Unit) bool     { return u.GroundDPS() > 5 }
+func DpsGt5(u *Unit) bool     { return u.GroundDPS() > 5 || u.Is(terran.Hellion, protoss.Sentry) }
 func NoAddon(u *Unit) bool    { return u.AddOnTag == 0 }
 func HasTechlab(u *Unit) bool { return u.HasTechlab() }
 func HasReactor(u *Unit) bool { return u.HasReactor() }
