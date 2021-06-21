@@ -195,6 +195,7 @@ func (b *Bot) Init(stop <-chan struct{}) {
 	// todo: как-то учитывать начальное направление взгляда юнита?
 	b.U.AfterAttack = AttackDelays{
 		terran.AutoTurret:  6,
+		terran.Banshee:     6,
 		terran.Cyclone:     6,
 		terran.Hellion:     6,
 		terran.HellionTank: 6,
