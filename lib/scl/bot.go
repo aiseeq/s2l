@@ -194,7 +194,7 @@ func (b *Bot) Init(stop <-chan struct{}) {
 	// Проблема в том, что есть большая разница между выстрелом после разворота и выстрелом без него
 	// todo: как-то учитывать начальное направление взгляда юнита?
 	b.U.AfterAttack = AttackDelays{
-		terran.AutoTurret:  6,
+		terran.AutoTurret:  9,
 		terran.Banshee:     6,
 		terran.Cyclone:     6,
 		terran.Hellion:     6,

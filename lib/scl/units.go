@@ -157,6 +157,16 @@ func (us Units) ByTags(tags Tags) Units {
 	return us.Filter(func(unit *Unit) bool { return tagMap[unit.Tag] })
 }
 
+func (us Units) OfType(ids ...api.UnitTypeID) Units {
+	u := Units{}
+	for _, unit := range us {
+		if unit.Is(ids...) {
+			u = append(u, unit)
+		}
+	}
+	return u
+}
+
 func (us Units) ClosestTo(ptr point.Pointer) *Unit {
 	p := ptr.Point()
 	var closest *Unit
