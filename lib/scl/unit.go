@@ -554,8 +554,9 @@ func (u *Unit) AssessStrength(attackers Units) (outranged, stronger bool) {
 		outranged = closestUnit.AirRange() >= math.Max(u.GroundRange(), u.AirRange())
 	}
 	if outranged {
-		friendsScore := B.Units.My.All().CloserThan(7, u).Filter(DpsGt5).Sum(CmpTotalScore)
-		enemiesScore := B.Enemies.AllReady.CloserThan(7, closestUnit).Filter(DpsGt5).Sum(CmpTotalScore)
+		// 14 - max possible unit range (Tempest)
+		friendsScore := B.Units.My.All().CloserThan(14, u).Filter(DpsGt5).Sum(CmpTotalScore)
+		enemiesScore := B.Enemies.AllReady.CloserThan(14, closestUnit).Filter(DpsGt5).Sum(CmpTotalScore)
 		// log.Info(friendsScore, enemiesScore, friendsScore*1.25 >= enemiesScore)
 		if friendsScore*1.25 >= enemiesScore {
 			stronger = true
