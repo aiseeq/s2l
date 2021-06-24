@@ -319,7 +319,7 @@ func (u *Unit) IsCoolToMove() bool {
 // Рипер убегая от лингов или зилота атакует реже и тем самым может сохранять дистанцию
 // Used to check if unit is ready to attack right away
 func (u *Unit) IsCoolToAttack() bool {
-	return u.WeaponCooldown == 0
+	return u.WeaponCooldown <= 0 // Sometimes it is NEGATIVE!
 }
 
 // Used to prevent switches between targets with same priority without actually attacking anything
