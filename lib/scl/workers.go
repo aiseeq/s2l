@@ -199,8 +199,11 @@ func (b *Bot) MicroMinerals(miners, ccs, enemies Units, safePos point.Pointer) {
 		if mfTag == 0 {
 			continue
 		}
-		if enemies.CanAttack(miner, 2).Exists() && ccs.Exists() {
+		if enemies.CanAttack(miner, 2).Exists() && ccs.Exists() && miner.Hits <= miner.HitsMax/2 {
 			miner.GroundFallback(safePos, false)
+			continue
+		}
+		if miner.EvadeEffects() {
 			continue
 		}
 		cc := ccs.ByTag(b.Miners.CCForMiner[miner.Tag])
@@ -243,8 +246,11 @@ func (b *Bot) MicroGas(miners, gases, ccs, enemies Units, safePos point.Pointer)
 		if gasTag == 0 {
 			continue
 		}
-		if enemies.CanAttack(miner, 2).Exists() && ccs.Exists() {
+		if enemies.CanAttack(miner, 2).Exists() && ccs.Exists() && miner.Hits <= miner.HitsMax/2 {
 			miner.GroundFallback(safePos, false)
+			continue
+		}
+		if miner.EvadeEffects() {
 			continue
 		}
 		cc := ccs.ByTag(b.Miners.CCForMiner[miner.Tag])
