@@ -322,13 +322,13 @@ func (u *Unit) IsCoolToAttack() bool {
 	return u.WeaponCooldown == 0
 }
 
-// Used to check if it is ok to issue next _attack_ order without interrupting current attack action
-func (u *Unit) IsCoolToAttackAgain() bool {
-	if delay, ok := B.U.BeforeAttack[u.UnitType]; ok && B.Loop-B.U.LastAttack[u.Tag] < delay {
-		return false
+// Used to prevent switches between targets with same priority without actually attacking anything
+func (u *Unit) IsAlreadyAttackingTargetInRange() bool {
+	target := B.Enemies.All.ByTag(u.TargetTag())
+	if target != nil && u.InRange(target, 0) {
+		return true
 	}
-	return true
-	// return B.U.BeforeAttack.UnitIsCool(u)
+	return false
 }
 
 func (u *Unit) IsVisible() bool {
@@ -654,8 +654,9 @@ func (u *Unit) GroundEvade(enemies Units, gap float64, ptr point.Pointer) (point
 	return u.Point() + escVec, false
 }
 
-func (u *Unit) GroundFallback(safePos point.Pointer) {
-	if !u.IsCoolToMove() || !u.IsCoolToAttackAgain() {
+func (u *Unit) GroundFallback(safePos point.Pointer, ignoreAttackAbility bool) {
+	// ignoreAttackAbility is for cyclone
+	if !u.IsCoolToMove() || !ignoreAttackAbility && u.IsCoolToAttack() && u.IsAlreadyAttackingTargetInRange() {
 		return // Don't move until attack is done
 	}
 	// fbp, _ := u.GroundFallbackPos(enemies, gap, safePath, 5)
@@ -886,7 +887,7 @@ func (u *Unit) AttackCustom(attackFunc AttackFunc, moveFunc MoveFunc, targetsGro
 	}
 
 	// Don't send another attack command or that could switch targets and attack will fail
-	if u.IsCoolToAttackAgain() {
+	if u.IsCoolToAttack() && !u.IsAlreadyAttackingTargetInRange() {
 		// Here we try to shoot at any target close enough
 		for priority, targets := range targetsGroups {
 			if attackFunc(u, priority, targets) {

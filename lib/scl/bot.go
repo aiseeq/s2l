@@ -68,13 +68,12 @@ type Bot struct {
 		UnitAliases        Aliases
 		UnitsOrders        map[api.UnitTag]UnitOrder
 
-		Attributes   map[api.UnitTypeID]map[api.Attribute]bool
-		Weapons      map[api.UnitTypeID]Weapon
-		HitsHistory  map[api.UnitTag][]int
-		PrevUnits    map[api.UnitTag]*Unit
-		AfterAttack  AttackDelays
-		BeforeAttack AttackDelays
-		LastAttack   map[api.UnitTag]int
+		Attributes  map[api.UnitTypeID]map[api.Attribute]bool
+		Weapons     map[api.UnitTypeID]Weapon
+		HitsHistory map[api.UnitTag][]int
+		PrevUnits   map[api.UnitTag]*Unit
+		AfterAttack AttackDelays
+		LastAttack  map[api.UnitTag]int
 	}
 	Miners struct {
 		CCForMiner       map[api.UnitTag]api.UnitTag
@@ -199,6 +198,7 @@ func (b *Bot) Init(stop <-chan struct{}) {
 		terran.Cyclone:     6,
 		terran.Hellion:     6,
 		terran.HellionTank: 6,
+		terran.SiegeTank:   6,
 		terran.Reaper:      6, // todo: всё равно иногда не достаточно (редко)
 		terran.SCV:         9,
 		terran.Thor:        24, // todo: он может двигаться быстрее, если была воздушная атака
@@ -207,15 +207,6 @@ func (b *Bot) Init(stop <-chan struct{}) {
 		zerg.Queen:         6,
 		protoss.Probe:      6,
 		protoss.Stalker:    6,
-	}
-	b.U.BeforeAttack = AttackDelays{ // Before next attack - increase if unit switches but not attacking
-		terran.Banshee:         18, // долго ракеты летят
-		terran.Cyclone:         6,
-		terran.Hellion:         6,
-		terran.SiegeTank:       6,
-		terran.SiegeTankSieged: 6,
-		terran.Thor:            24,
-		terran.ThorAP:          24,
 	}
 	B.U.LastAttack = map[api.UnitTag]int{}
 
