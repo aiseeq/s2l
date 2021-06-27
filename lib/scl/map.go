@@ -312,7 +312,8 @@ func (b *Bot) IsPosOk(ptr point.Pointer, size BuildingSize, cells PathableCells,
 }
 
 // Return 0 if not found
-func (b *Bot) FindClosestPos(ptr point.Pointer, size BuildingSize, cells PathableCells, maxOffset, step int, flags ...CheckMap) point.Point {
+func (b *Bot) FindClosestPos(ptr point.Pointer, size BuildingSize, aid api.AbilityID,
+	cells PathableCells, maxOffset, step int, flags ...CheckMap) point.Point {
 	pos := ptr.Point().Floor()
 	for offset := 0; offset <= maxOffset; offset += step {
 		for y := -float64(offset); y <= float64(offset); y++ {
@@ -322,6 +323,9 @@ func (b *Bot) FindClosestPos(ptr point.Pointer, size BuildingSize, cells Pathabl
 				}
 				p := point.Pt(pos.X()+x, pos.Y()+y)
 				if b.IsPosOk(p, size, cells, flags...) {
+					if aid != 0 && !B.RequestPlacement(aid, pos, nil) {
+						continue
+					}
 					return p
 				}
 			}
