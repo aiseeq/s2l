@@ -199,6 +199,7 @@ func (b *Bot) MicroMinerals(miners, ccs, enemies Units, safePos point.Pointer) {
 		if mfTag == 0 {
 			continue
 		}
+		// This should help in case of reapers
 		if enemies.CanAttack(miner, 2).Exists() && ccs.Exists() && miner.Hits <= miner.HitsMax/2 {
 			miner.GroundFallback(safePos, false)
 			continue
@@ -212,11 +213,10 @@ func (b *Bot) MicroMinerals(miners, ccs, enemies Units, safePos point.Pointer) {
 			// Minerals are not inited for this CC yet
 			b.InitCCMinerals(cc)
 		}
-		// This makes workers ride too much
-		/*if miner.IsFurtherThan(ResourceSpreadDistance, cc) {
-			miner.GroundFallback(target)
+		if miner.IsFurtherThan(4, target) {
+			miner.GroundFallback(target, true)
 			continue
-		}*/
+		}
 		// If miner not mining the mineral he assigned to (happens if game decides to change worker target)
 		if miner.IsGathering() && miner.TargetTag() != mfTag {
 			miner.SpamCmds = true                  // We need to send the same command again
@@ -255,10 +255,10 @@ func (b *Bot) MicroGas(miners, gases, ccs, enemies Units, safePos point.Pointer)
 		}
 		cc := ccs.ByTag(b.Miners.CCForMiner[miner.Tag])
 		target := gases.ByTag(gasTag).Towards(miner, float64(gases.First().Radius+miner.Radius))
-		/*if miner.IsFurtherThan(ResourceSpreadDistance, cc) {
-			miner.GroundFallback(target)
+		if miner.IsFurtherThan(4, target) {
+			miner.GroundFallback(target, true)
 			continue
-		}*/
+		}
 		// If miner not mining the refinery he assigned to
 		if miner.IsGathering() && miner.TargetTag() != gasTag {
 			miner.SpamCmds = true // We need to send the same command again
@@ -312,7 +312,6 @@ func (b *Bot) HandleOversaturation(ccs, allMfs Units) {
 	}
 }
 
-// todo: exclude dangerous zones (liberator circle?)
 // balance - minerals to gas gather ratio, ex: 2 => gather more vespene if it is less than minerals * 2
 func (b *Bot) HandleMiners(miners, ccs, enemies Units, balance float64, safePos point.Pointer) {
 	if miners.Empty() || ccs.Empty() {
