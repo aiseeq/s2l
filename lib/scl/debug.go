@@ -196,7 +196,7 @@ func (b *Bot) DebugLines(lines point.Lines, color api.Color) {
 
 func (b *Bot) DebugOrders() {
 	var dls []*api.DebugLine
-	everything := b.Units.My.All()
+	everything := b.Units.MyAll
 	everything.Add(b.Units.AllEnemy.All()...)
 	everything.Add(b.Units.Minerals.All()...)
 	everything.Add(b.Units.Geysers.All()...)

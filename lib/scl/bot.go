@@ -43,6 +43,7 @@ type Bot struct {
 	}
 	Units struct {
 		My       UnitsByTypes
+		MyAll    Units
 		Enemy    UnitsByTypes
 		AllEnemy UnitsByTypes
 		Minerals UnitsByTypes
@@ -193,20 +194,21 @@ func (b *Bot) Init(stop <-chan struct{}) {
 	// Проблема в том, что есть большая разница между выстрелом после разворота и выстрелом без него
 	// todo: как-то учитывать начальное направление взгляда юнита?
 	b.U.AfterAttack = AttackDelays{
-		terran.AutoTurret:  9,
-		terran.Banshee:     6,
-		terran.Cyclone:     6,
-		terran.Hellion:     6,
-		terran.HellionTank: 6,
-		terran.SiegeTank:   6,
-		terran.Reaper:      6, // todo: всё равно иногда не достаточно (редко)
-		terran.SCV:         9,
-		terran.Thor:        24, // todo: он может двигаться быстрее, если была воздушная атака
-		terran.ThorAP:      24,
-		zerg.Drone:         6,
-		zerg.Queen:         6,
-		protoss.Probe:      6,
-		protoss.Stalker:    6,
+		terran.AutoTurret:    9,
+		terran.Banshee:       6,
+		terran.Cyclone:       6,
+		terran.Hellion:       6,
+		terran.HellionTank:   6,
+		terran.SiegeTank:     6,
+		terran.Reaper:        6, // todo: всё равно иногда не достаточно (редко)
+		terran.SCV:           9,
+		terran.Thor:          24, // todo: он может двигаться быстрее, если была воздушная атака
+		terran.ThorAP:        24,
+		terran.VikingFighter: 6,
+		zerg.Drone:           6,
+		zerg.Queen:           6,
+		protoss.Probe:        6,
+		protoss.Stalker:      6,
 	}
 	B.U.LastAttack = map[api.UnitTag]int{}
 
@@ -245,7 +247,7 @@ func (b *Bot) FindClusters() {
 	enemies := b.Enemies.AllReady.Filter(func(unit *Unit) bool {
 		return !unit.IsWorker() && (unit.IsDefensive() || !unit.IsStructure())
 	})
-	/*enemies := b.Units.My.All().Filter(func(unit *Unit) bool {
+	/*enemies := b.Units.MyAll.Filter(func(unit *Unit) bool {
 		return unit.IsReady() && !unit.IsWorker() && (unit.IsDefensive() || !unit.IsStructure())
 	})*/
 	// Find neighbours for each unit
@@ -431,17 +433,18 @@ func (b *Bot) ParseUnits() {
 		b.Units.AllEnemy.Add(u.UnitType, u)
 	}
 
+	b.Units.MyAll = B.Units.My.All()
 	b.Enemies.All = b.Units.AllEnemy.All()
 	b.Enemies.AllReady = b.Enemies.All.Filter(Ready)
 	b.Enemies.Visible = b.Units.Enemy.All()
 
-	b.RequestAvailableAbilities(false, b.Units.My.All()...)
-	b.RequestAvailableAbilities(true, b.Units.My.All()...)
+	b.RequestAvailableAbilities(false, b.Units.MyAll...)
+	b.RequestAvailableAbilities(true, b.Units.MyAll...)
 }
 
 func (b *Bot) ParseOrders() {
 	b.Orders = map[api.AbilityID]int{}
-	for _, unit := range b.Units.My.All() {
+	for _, unit := range b.Units.MyAll {
 		for _, order := range unit.Orders {
 			b.Orders[order.AbilityId]++
 		}

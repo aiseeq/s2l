@@ -555,7 +555,7 @@ func (u *Unit) AssessStrength(attackers Units) (outranged, stronger bool) {
 	}
 	if outranged {
 		// 14 - max possible unit range (Tempest)
-		friendsScore := B.Units.My.All().CloserThan(14, u).Filter(DpsGt5).Sum(CmpTotalScore)
+		friendsScore := B.Units.MyAll.CloserThan(14, u).Filter(DpsGt5).Sum(CmpTotalScore)
 		enemiesScore := B.Enemies.AllReady.CloserThan(14, closestUnit).Filter(DpsGt5).Sum(CmpTotalScore)
 		// log.Info(friendsScore, enemiesScore, friendsScore*1.25 >= enemiesScore)
 		if friendsScore*1.25 >= enemiesScore {
@@ -759,11 +759,7 @@ type AttackFunc func(u *Unit, priority int, targets Units) bool
 type MoveFunc func(u *Unit, target *Unit)
 
 func DefaultAttackFunc(u *Unit, priority int, targets Units) bool {
-	if priority > 0 && !u.IsCoolToAttack() {
-		return false // Don't focus on secondary targets if weapons are not cool yet
-	}
-	closeTargets := targets.Filter(Visible).InRangeOf(u, 0)
-	if closeTargets.Exists() && u.IsCoolToAttack() {
+	if closeTargets := targets.Filter(Visible).InRangeOf(u, 0); closeTargets.Exists() {
 		target := closeTargets.Min(func(unit *Unit) float64 {
 			return unit.Hits
 		})
@@ -771,6 +767,13 @@ func DefaultAttackFunc(u *Unit, priority int, targets Units) bool {
 		u.CommandTag(ability.Attack_Attack, target.Tag)
 		B.U.LastAttack[u.Tag] = B.Loop
 		return true
+	} else if u.EvadeEffects() {
+		return true
+	} else if !u.IsFlying {
+		if pos, safe := u.SpreadFromSplash(B.Enemies.AllReady, u); !safe {
+			u.CommandPos(ability.Move, pos)
+			return true
+		}
 	}
 	return false
 }
@@ -799,9 +802,12 @@ func DefaultMoveFunc(u *Unit, target *Unit) {
 	// Unit need to be closer to the target to shoot?
 	if !u.InRange(target, -0.1) || !target.IsVisible() || !target.IsPosVisible() {
 		u.AttackMove(target)
-	} else {
-		// Evade effects
-		u.EvadeEffects()
+	} else if !u.EvadeEffects() {
+		if !u.IsFlying {
+			if pos, safe := u.SpreadFromSplash(B.Enemies.AllReady, u); !safe {
+				u.CommandPos(ability.Move, pos)
+			}
+		}
 	}
 }
 
@@ -844,6 +850,44 @@ func (u *Unit) EvadeEffectsPos(ptr point.Pointer, checkKD8 bool, eids ...api.Eff
 	return upos, true
 }
 
+var splashRadius = map[api.UnitTypeID]float64{
+	terran.SiegeTankSieged:   1.25,
+	terran.WidowMineBurrowed: 1.75,
+	terran.PlanetaryFortress: 1.25,
+	protoss.Archon:           1,
+	zerg.Baneling:            2.2,
+	zerg.Ultralisk:           2,
+}
+
+func (u *Unit) SpreadFromSplash(enemies Units, ptr point.Pointer) (point.Point, bool) { // bool = is safe
+	var maxRad float64
+	for _, enemy := range enemies {
+		if enemy.IsFurtherThan(14, u) {
+			continue // Calculations optimization
+		}
+		rad := splashRadius[enemy.UnitType]
+		if rad == 0 || !enemy.InRange(u, rad*2) {
+			continue
+		}
+		if rad > maxRad {
+			maxRad = rad
+		}
+	}
+	if maxRad == 0 || float64(u.Radius) >= maxRad {
+		return ptr.Point(), true
+	}
+
+	friends := B.Units.MyAll.Filter(func(unit *Unit) bool {
+		// Take only units that are the same size or larger. So smaller units will move and larger will stand
+		return unit.Tag != u.Tag && unit.Radius >= u.Radius && unit.IsCloserThan(maxRad+float64(u.Radius), u)
+	})
+	if friends.Empty() {
+		return ptr.Point(), true
+	}
+
+	return u.Towards(friends.Center(), -1), false
+}
+
 func (u *Unit) AttackMove(target *Unit) {
 	dist := u.Dist(target)
 	rads := float64(u.Radius + target.Radius)
@@ -860,15 +904,20 @@ func (u *Unit) AttackMove(target *Unit) {
 		pos, safe = u.EvadeEffectsPos(npos, true, effects...)
 		if safe {
 			enemies := B.Enemies.AllReady
-			if u.IsFlying {
-				pos, safe = u.AirEvade(enemies, 2, npos)
-			} else {
-				pos, safe = u.GroundEvade(enemies, 2, npos)
+			if !u.IsFlying {
+				pos, safe = u.SpreadFromSplash(enemies, npos)
 			}
-			if !safe && target.Cloak != api.CloakState_Cloaked {
-				outranged, stronger := u.AssessStrength(enemies)
-				if !outranged || stronger {
-					safe = true
+			if safe {
+				if u.IsFlying {
+					pos, safe = u.AirEvade(enemies, 2, npos)
+				} else {
+					pos, safe = u.GroundEvade(enemies, 2, npos)
+				}
+				if !safe && target.Cloak != api.CloakState_Cloaked {
+					outranged, stronger := u.AssessStrength(enemies)
+					if !outranged || stronger {
+						safe = true
+					}
 				}
 			}
 		}
