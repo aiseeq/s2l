@@ -835,6 +835,9 @@ func (u *Unit) EvadeEffectsPos(ptr point.Pointer, checkKD8 bool, eids ...api.Eff
 				for _, p2 := range e.Pos {
 					p := point.Pt2(p2)
 					gap := upos.Dist(p) - float64(B.U.Effects[eid].Radius+u.Radius) - 0.5
+					if eid == effect.LiberatorDefenderZone {
+						gap -= 0.5 // Try to be a little bit safer (or units tend to touch circle and die)
+					}
 					if gap < 0 {
 						pos := upos.Towards(p, gap-1)
 						if upos == p {

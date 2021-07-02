@@ -21,6 +21,7 @@ type Bot struct {
 	Info          *api.ResponseGameInfo
 	Chat          []*api.ChatReceived
 	Result        []*api.PlayerResult
+	Errors        []*api.ActionError
 	Actions       actions.Actions
 	Cmds          *CommandsStack
 	DebugCommands []*api.DebugCommand
@@ -136,7 +137,8 @@ func (b *Bot) UpdateObservation() {
 	b.Obs = o.Observation
 	b.Chat = o.Chat
 	b.Result = o.PlayerResult
-	// todo: Action, ActionError
+	b.Errors = o.ActionErrors
+	// todo: Action
 }
 
 func (b *Bot) UpdateData() {
