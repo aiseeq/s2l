@@ -94,6 +94,7 @@ type Bot struct {
 	// ExpPaths         []Steps
 	WayMap           WaypointsMap
 	SafeWayMap       WaypointsMap
+	ReaperExists     bool
 	ReaperWayMap     WaypointsMap
 	ReaperSafeWayMap WaypointsMap
 
@@ -416,6 +417,7 @@ func (b *Bot) ParseUnits() {
 		}
 	}
 	b.Grid.Unlock()
+	b.ReaperExists = b.Units.My[terran.Reaper].Exists()
 
 	for _, u := range oldEnemyUnits {
 		visible := true

@@ -4,7 +4,6 @@ import (
 	"bitbucket.org/aisee/minilog"
 	"github.com/aiseeq/s2l/lib/grid"
 	"github.com/aiseeq/s2l/lib/point"
-	"github.com/aiseeq/s2l/protocol/enums/terran"
 	"math"
 	"time"
 )
@@ -202,7 +201,7 @@ func (b *Bot) RenewPaths(stop <-chan struct{}) {
 		b.Grid.Unlock()
 		safeGrid := grid.New(navGrid.StartRaw, navGrid.MapState)
 
-		reapersExists := b.Units.My[terran.Reaper].Exists()
+		reapersExists := b.ReaperExists
 		var reaperGrid, reaperSafeGrid *grid.Grid
 		if reapersExists {
 			reaperGrid = grid.New(navGrid.StartRaw, navGrid.MapState)
