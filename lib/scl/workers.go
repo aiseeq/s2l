@@ -10,8 +10,9 @@ import (
 	"github.com/aiseeq/s2l/protocol/enums/zerg"
 )
 
-func (b *Bot) InitCCMinerals(cc *Unit) {
+func (b *Bot) InitCCMinerals(cc *Unit, turrets point.Points) {
 	mfs := B.Units.Minerals.All().CloserThan(ResourceSpreadDistance, cc)
+	ts := turrets.CloserThan(ResourceSpreadDistance, cc)
 	dist := float64(mfs.First().Radius + 0.2)
 	for _, mf := range mfs {
 		target := mf.Towards(cc, dist)
@@ -23,12 +24,20 @@ func (b *Bot) InitCCMinerals(cc *Unit) {
 				target = pts.ClosestTo(target)
 			}
 		}
+		if t := ts.CloserThan(1.4, target).ClosestTo(target); t != 0 {
+			targetMineral := point.NewCircle(float64(mf.Pos.X), float64(mf.Pos.Y), dist)
+			turret := point.NewCircle(t.X(), t.Y(), 1.4)
+			pts := point.Intersect(targetMineral, turret)
+			if len(pts) == 2 {
+				target = pts.ClosestTo(target)
+			}
+		}
 		b.Miners.TargetForMineral[mf.Tag] = target
 	}
 	log.Debugf("Minerals inited for base @ %v", cc.Pos)
 }
 
-func (b *Bot) InitMining() {
+func (b *Bot) InitMining(turrets point.Points) {
 	b.Miners.CCForMiner = map[api.UnitTag]api.UnitTag{}
 	b.Miners.GasForMiner = map[api.UnitTag]api.UnitTag{}
 	b.Miners.MineralForMiner = map[api.UnitTag]api.UnitTag{}
@@ -37,7 +46,7 @@ func (b *Bot) InitMining() {
 
 	cc := b.Units.My.OfType(terran.CommandCenter, terran.OrbitalCommand, terran.PlanetaryFortress,
 		zerg.Hatchery, zerg.Lair, zerg.Hive, protoss.Nexus).First(Ready)
-	b.InitCCMinerals(cc)
+	b.InitCCMinerals(cc, turrets)
 	miners := b.Units.My.OfType(terran.SCV, zerg.Drone, protoss.Probe)
 	mfs := b.Units.Minerals.All().CloserThan(ResourceSpreadDistance, cc)
 	for _, mf := range mfs {
@@ -193,7 +202,7 @@ nextMiner2: // If someone is left, fill up to 3
 	}
 }
 
-func (b *Bot) MicroMinerals(miners, ccs, enemies Units, safePos point.Pointer) {
+func (b *Bot) MicroMinerals(miners, ccs, enemies Units, safePos point.Pointer, turrets point.Points) {
 	for _, miner := range miners {
 		mfTag := b.Miners.MineralForMiner[miner.Tag]
 		if mfTag == 0 {
@@ -211,7 +220,7 @@ func (b *Bot) MicroMinerals(miners, ccs, enemies Units, safePos point.Pointer) {
 		target := b.Miners.TargetForMineral[mfTag]
 		if target == 0 {
 			// Minerals are not inited for this CC yet
-			b.InitCCMinerals(cc)
+			b.InitCCMinerals(cc, turrets)
 		}
 		if miner.IsFurtherThan(4, target) {
 			miner.GroundFallback(target, true)
@@ -253,8 +262,8 @@ func (b *Bot) MicroGas(miners, gases, ccs, enemies Units, safePos point.Pointer)
 		if miner.EvadeEffects() {
 			continue
 		}
-		cc := ccs.ByTag(b.Miners.CCForMiner[miner.Tag])
-		target := gases.ByTag(gasTag).Towards(miner, float64(gases.First().Radius+miner.Radius))
+		ref := gases.ByTag(gasTag)
+		target := ref.Towards(miner, float64(gases.First().Radius+miner.Radius))
 		if miner.IsFurtherThan(4, target) {
 			miner.GroundFallback(target, true)
 			continue
@@ -265,17 +274,21 @@ func (b *Bot) MicroGas(miners, gases, ccs, enemies Units, safePos point.Pointer)
 			miner.CommandTag(ability.Smart, gasTag)
 			continue
 		}
+		/*if ref.AssignedHarvesters == 3 {
+			continue // Don't micro them
+		}
 		if !miner.IsReturning() && len(miner.Orders) < 2 &&
 			miner.IsFurtherThan(1, target) && miner.IsCloserThan(2, target) {
 			miner.CommandPos(ability.Move_Move, target)
 			miner.CommandTagQueue(ability.Smart, gasTag)
 		}
+		cc := ccs.ByTag(b.Miners.CCForMiner[miner.Tag])
 		target = cc.Towards(miner, float64(cc.Radius+miner.Radius))
 		if miner.IsReturning() && len(miner.Orders) < 2 &&
 			miner.IsFurtherThan(1, target) && miner.IsCloserThan(2, target) {
 			miner.CommandPos(ability.Move_Move, target)
 			miner.CommandTagQueue(ability.Smart, cc.Tag)
-		}
+		}*/
 	}
 }
 
@@ -313,7 +326,7 @@ func (b *Bot) HandleOversaturation(ccs, allMfs Units) {
 }
 
 // balance - minerals to gas gather ratio, ex: 2 => gather more vespene if it is less than minerals * 2
-func (b *Bot) HandleMiners(miners, ccs, enemies Units, balance float64, safePos point.Pointer) {
+func (b *Bot) HandleMiners(miners, ccs, enemies Units, balance float64, safePos point.Pointer, turrets point.Points) {
 	if miners.Empty() || ccs.Empty() {
 		return
 	}
@@ -371,7 +384,7 @@ func (b *Bot) HandleMiners(miners, ccs, enemies Units, balance float64, safePos 
 		delete(b.Miners.MineralForMiner, minerTag)
 	}
 
-	b.MicroMinerals(miners, ccs, enemies, safePos)
+	b.MicroMinerals(miners, ccs, enemies, safePos, turrets)
 	b.MicroGas(miners, gases, ccs, enemies, safePos)
 
 	if pool.Empty() {

@@ -226,7 +226,6 @@ func (b *Bot) Init(stop <-chan struct{}) {
 	b.ParseOrders()
 	b.InitLocations()
 	b.FindExpansions()
-	b.InitMining()
 	b.FindRamps()
 	b.InitRamps()
 	go b.RenewPaths(stop)

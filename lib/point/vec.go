@@ -25,6 +25,14 @@ func (a Point) Compas() Side {
 	return Side(f * 8)
 }
 
+func (s Side) IsHorizontal() bool {
+	return s == E || s == W
+}
+
+func (s Side) IsVertical() bool {
+	return s == N || s == S
+}
+
 func (s Side) IsOrthogonal() bool {
 	return s == E || s == N || s == W || s == S
 }

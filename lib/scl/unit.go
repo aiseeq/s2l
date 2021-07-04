@@ -404,6 +404,10 @@ func (u *Unit) IsLight() bool {
 	return B.U.Attributes[u.UnitType][api.Attribute_Light]
 }
 
+func (u *Unit) IsMechanical() bool {
+	return B.U.Attributes[u.UnitType][api.Attribute_Mechanical]
+}
+
 func (u *Unit) IsWorker() bool {
 	return u.UnitType == terran.SCV || u.UnitType == terran.MULE ||
 		u.UnitType == zerg.Drone || u.UnitType == protoss.Probe
@@ -990,6 +994,7 @@ func PosVisible(u *Unit) bool   { return u.IsPosVisible() }
 func Hidden(u *Unit) bool       { return u.IsHidden() }
 func Structure(u *Unit) bool    { return u.IsStructure() }
 func NotStructure(u *Unit) bool { return !u.IsStructure() }
+func Mechanical(u *Unit) bool   { return u.IsMechanical() }
 func Flying(u *Unit) bool       { return u.IsFlying || u.UnitType == protoss.Colossus }
 func Ground(u *Unit) bool       { return !u.IsFlying || u.UnitType == protoss.Colossus }
 func NotWorker(u *Unit) bool    { return !u.IsWorker() }

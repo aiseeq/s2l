@@ -449,7 +449,7 @@ func (b *Bot) InitLocations() {
 	b.Locs.MapCenter = (point.PtI(pa.P0) + point.PtI(pa.P1)).Mul(0.5)
 
 	// My CC is on start position
-	b.Locs.MyStart = b.Units.My.OfType(terran.CommandCenter, zerg.Hatchery, protoss.Nexus).First().Point().Floor()
+	b.Locs.MyStart = b.Units.My.OfType(terran.CommandCenter, zerg.Hatchery, protoss.Nexus).First().Point()
 	esl := b.Info.StartRaw.StartLocations
 	b.Locs.EnemyStart = point.Pt2(esl[0])
 	eslps := point.Points{}
@@ -521,7 +521,7 @@ func (b *Bot) FindExpansions() {
 	var expDists, enemyExpDists []float64
 	// Find expansions locations
 	for _, uc := range b.CalculateExpansionLocations() {
-		center := uc.Center()
+		center := uc.Center().CellCenter()
 		// Fill expansions locations list
 		if center == b.Locs.MyStart {
 			continue

@@ -371,15 +371,15 @@ func BuildDrones() {
 func MiningLib() {
 	if B.MyRace() == api.Race_Terran {
 		if B.Loop >= 102 && B.Loop < 105 {
-			B.RedistributeWorkersToRefineryIfNeeded(B.Units.My[terran.Refinery].First(), B.Units.My[terran.SCV], 3)
+			// B.RedistributeWorkersToRefineryIfNeeded(B.Units.My[terran.Refinery].First(), B.Units.My[terran.SCV], 3)
 		}
-		B.HandleMiners(B.Units.My[terran.SCV], B.Units.My[terran.CommandCenter], nil, 1, point.Pt0())
+		B.HandleMiners(B.Units.My[terran.SCV], B.Units.My[terran.CommandCenter], nil, 1, point.Pt0(), TurretsMiningPos)
 		BuildSCVs()
 	} else if B.MyRace() == api.Race_Zerg {
 		if B.Loop >= 102 && B.Loop < 105 {
 			B.RedistributeWorkersToRefineryIfNeeded(B.Units.My[zerg.Hatchery].First(), B.Units.My[zerg.Drone], 3)
 		}
-		B.HandleMiners(B.Units.My[zerg.Drone], B.Units.My[zerg.Hatchery], nil, 1, point.Pt0())
+		B.HandleMiners(B.Units.My[zerg.Drone], B.Units.My[zerg.Hatchery], nil, 1, point.Pt0(), TurretsMiningPos)
 		BuildDrones()
 	}
 	CheckTime()
@@ -430,11 +430,14 @@ func AddBuildings() {
 	if B.MyRace() == api.Race_Terran {
 		B.DebugAddUnits(terran.SupplyDepot, B.Obs.PlayerCommon.PlayerId, B.Locs.MyStart.Towards(B.Locs.MapCenter, 3), 1)
 		// B.DebugAddUnits(terran.MissileTurret, B.Obs.PlayerCommon.PlayerId, B.Locs.MyStart.Towards(B.Locs.MapCenter, -2), 1)
-		cc := B.Units.My[terran.CommandCenter].First()
+		/*cc := B.Units.My[terran.CommandCenter].First()
 		geysers := B.Units.Geysers.All().CloserThan(10, cc)
 		for _, geyser := range geysers {
 			B.DebugKillUnits(geyser.Tag)
 			B.DebugAddUnits(terran.Refinery, B.Obs.PlayerCommon.PlayerId, point.Pt3(geyser.Pos), 1)
+		}*/
+		for _, pos := range TurretsPos {
+			B.DebugAddUnits(terran.MissileTurret, B.Obs.PlayerCommon.PlayerId, pos, 1)
 		}
 		B.DebugSend()
 	} else if B.MyRace() == api.Race_Zerg {
@@ -449,6 +452,116 @@ func AddBuildings() {
 	}
 }
 
+var TurretsPos, TurretsMiningPos point.Points
+
+func FindTurretPosition(ptr point.Pointer) {
+	mfs := B.Units.Minerals.All().CloserThan(scl.ResourceSpreadDistance, ptr)
+	if mfs.Len() != 8 {
+		return // Unorthodox expansion, it's better to skip it
+	}
+	mfsCenter := mfs.Center()
+
+	var corners point.Points
+	ccVec := (mfsCenter - ptr.Point()).Norm()
+	minSide := ccVec.Compas()
+	ccDir := mfsCenter.Dir(ptr)
+	geysers := B.Units.Geysers.All().CloserThan(10, ptr)
+	if minSide.IsDiagonal() {
+		// Minerals are in quarter-circle
+		// We need to find minerals on the edge of field
+		mfs.OrderByDistanceTo(mfsCenter, true)           // furthest are in corners
+		corners = append(corners, mfs[0].Point()-1-0.5i) // Bottom left corner of the mineral field
+		for _, mf := range mfs[1:4] {
+			if mf.IsCloserThan(4, mfs[0]) {
+				continue
+			}
+			corners = append(corners, mf.Point()-1-0.5i)
+			break
+		}
+		// Move corners so they become turrets positions
+		for n, corner := range corners {
+			side := (corner - ptr.Point()).Compas()
+			corners[n] += ccDir
+			switch side {
+			case point.N:
+				corners[n] -= 1i
+			case point.S:
+				// nothing
+			case point.E:
+				corners[n] -= 1
+				if imag(ccDir) == -1 {
+					corners[n] -= 1i
+				}
+			case point.W:
+				corners[n] += 1
+				if imag(ccDir) == -1 {
+					corners[n] -= 1i
+				}
+			}
+		}
+		// Check if geysers are close
+		if len(geysers) == 2 && geysers[0].Dist2(geysers[1]) < 8*8 {
+			geysersCenter := geysers.Center()
+			n := 0
+			if geysersCenter.Dist2(corners[1]) < geysersCenter.Dist2(corners[0]) {
+				n = 1
+			}
+			// Here we need to move position horizontally or vertically to touch both geysers
+			furthestGeyser := geysers.FurthestTo(corners[n])
+			side := (corners[n] - furthestGeyser.Point()).Compas()
+			switch side {
+			case point.N:
+				corners[n].SetY(furthestGeyser.Point().Y() + 1.5)
+			case point.S:
+				corners[n].SetY(furthestGeyser.Point().Y() - 3.5)
+			case point.E:
+				corners[n].SetX(furthestGeyser.Point().X() + 1.5)
+			case point.W:
+				corners[n].SetX(furthestGeyser.Point().X() - 3.5)
+			}
+		}
+	} else {
+		// Minerals are in line or half-circle
+		for _, geyser := range geysers {
+			corner := geyser.Point() - 1.5 - 1.5i
+			side := (geyser.Point() - geysers.Center()).Compas()
+			switch side {
+			case point.N:
+				corner -= 2i
+			case point.S:
+				corner += 3i
+			case point.E:
+				corner -= 2
+			case point.W:
+				corner += 3
+			}
+			switch minSide {
+			case point.N:
+				corner += 1i
+			case point.E:
+				corner += 1
+			}
+			corners = append(corners, corner)
+		}
+	}
+	B.DebugPoints(corners...)
+
+	var pos point.Point
+	for _, corner := range corners {
+		if !B.IsPosOk(corner, scl.S2x2, 0, scl.IsBuildable, scl.IsPathable, scl.IsNoCreep) {
+			continue
+		}
+		pos = corner.CellCenter()
+		if !TurretsPos.Has(pos) {
+			TurretsPos.Add(pos)
+		}
+		for _, p := range B.GetBuildingPoints(pos, scl.S2x2) {
+			B.Grid.SetBuildable(p, false)
+			B.Grid.SetPathable(p, false)
+		}
+	}
+}
+
 const workersLimit = 16
 const repeats = 10
 
@@ -458,10 +571,11 @@ func main() {
 	var cfg *client.GameConfig
 	for iter := 0; iter < repeats; iter++ {
 		for _, mapName := range client.Maps2021season1 { // []string{"IceandChrome506"}
-			client.SetRealtime()
+			// client.SetRealtime()
 			if cfg == nil {
+				// client.LaunchPortStart = 8268
 				client.SetMap(mapName + ".SC2Map")
-				bot := client.NewParticipant(api.Race_Zerg, "MiningTest")
+				bot := client.NewParticipant(api.Race_Terran, "MiningTest")
 				cpu := client.NewComputer(api.Race_Protoss, api.Difficulty_Medium, api.AIBuild_RandomBuild)
 				cfg = client.LaunchAndJoin(bot, cpu)
 			} else {
@@ -478,7 +592,19 @@ func main() {
 			MineralForMiner = map[api.UnitTag]api.UnitTag{}
 			// CCForMiner = map[api.UnitTag]api.UnitTag{}
 
+			TurretsPos = nil
+			FindTurretPosition(B.Locs.MyStart)
+			for _, exp := range B.Locs.MyExps {
+				FindTurretPosition(exp)
+			}
+			// Make positions for mining targets calculations
+			TurretsMiningPos = make(point.Points, len(TurretsPos))
+			copy(TurretsMiningPos, TurretsPos)
+			for n := range TurretsMiningPos {
+				TurretsMiningPos[n] += 0.5 + 0.5i
+			}
 			AddBuildings() // To prevent supply block
+			B.InitMining(TurretsMiningPos)
 
 			for B.Client.Status == api.Status_in_game {
 				Step()
@@ -504,6 +630,35 @@ func main() {
 			floats.Min(res), floats.Max(res), floats.Sum(res)/float64(len(res)), res)
 	}
 }
+
+/*
+Repeat MicroManage test from lib
+Submarine506,     min: 1880.0, max: 1890.0, avg: 1886.0, [1885 1890 1880 1885 1880 1890 1890 1885 1885 1890]
+IceandChrome506,  min: 1880.0, max: 1890.0, avg: 1886.0, [1880 1885 1885 1890 1885 1885 1885 1890 1890 1885]
+DeathAura506,     min: 1880.0, max: 1890.0, avg: 1885.0, [1880 1890 1880 1890 1890 1885 1880 1880 1890 1885]
+EverDream506,     min: 1875.0, max: 1885.0, avg: 1882.0, [1885 1875 1880 1885 1885 1885 1880 1885 1885 1875]
+EternalEmpire506, min: 1845.0, max: 1855.0, avg: 1853.0, [1855 1855 1855 1855 1855 1855 1850 1850 1845 1855]
+PillarsofGold506, min: 1835.0, max: 1845.0, avg: 1843.0, [1845 1845 1845 1840 1845 1845 1845 1840 1845 1835]
+GoldenWall506,    min: 1730.0, max: 1785.0, avg: 1757.5, [1760 1730 1785 1775 1760 1755 1740 1760 1755 1755]
+
+Towers added
+DeathAura506,     min: 1880.0, max: 1890.0, avg: 1884.5, [1880 1880 1885 1885 1880 1890 1885 1885 1885 1890]
+PillarsofGold506, min: 1835.0, max: 1845.0, avg: 1842.0, [1845 1845 1840 1845 1845 1840 1845 1840 1835 1840]
+EverDream506,     min: 1770.0, max: 1825.0, avg: 1798.5, [1810 1815 1810 1770 1825 1825 1780 1785 1770 1795]
+IceandChrome506,  min: 1775.0, max: 1810.0, avg: 1794.5, [1775 1785 1795 1800 1810 1780 1790 1805 1795 1810]
+Submarine506,     min: 1765.0, max: 1825.0, avg: 1793.5, [1815 1770 1805 1795 1790 1795 1765 1805 1770 1825]
+EternalEmpire506, min: 1735.0, max: 1785.0, avg: 1759.0, [1735 1770 1750 1770 1765 1740 1765 1760 1785 1750]
+GoldenWall506,    min: 1735.0, max: 1775.0, avg: 1753.5, [1760 1770 1755 1740 1740 1735 1775 1750 1745 1765]
+
+Towers moved a little
+Submarine506,     min: 1880.0, max: 1890.0, avg: 1885.0, [1890 1880 1885 1885 1885 1885 1885 1880 1885 1890]
+EverDream506,     min: 1880.0, max: 1885.0, avg: 1884.5, [1885 1885 1885 1885 1885 1885 1885 1885 1885 1880]
+DeathAura506,     min: 1875.0, max: 1895.0, avg: 1883.0, [1875 1885 1885 1880 1880 1880 1880 1885 1895 1885]
+IceandChrome506,  min: 1870.0, max: 1890.0, avg: 1883.0, [1875 1885 1880 1890 1885 1885 1890 1870 1880 1890]
+EternalEmpire506, min: 1825.0, max: 1850.0, avg: 1842.0, [1845 1830 1825 1850 1850 1840 1840 1850 1845 1845]
+PillarsofGold506, min: 1840.0, max: 1845.0, avg: 1842.0, [1845 1845 1840 1840 1845 1840 1840 1840 1845 1840]
+GoldenWall506,    min: 1805.0, max: 1820.0, avg: 1815.0, [1815 1820 1815 1805 1820 1815 1810 1820 1815 1815]
+*/
 
 /*
 MicroManage

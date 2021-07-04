@@ -14,6 +14,7 @@ type Pointer interface {
 
 type Point complex128
 type Points []Point
+type Filter func(pt Point) bool
 type Line struct {
 	A, B Point
 }
@@ -65,8 +66,16 @@ func (a Point) X() float64 {
 	return real(complex128(a))
 }
 
+func (a *Point) SetX(x float64) {
+	*a = Point(complex(x, imag(*a)))
+}
+
 func (a Point) Y() float64 {
 	return imag(complex128(a))
+}
+
+func (a *Point) SetY(y float64) {
+	*a = Point(complex(real(*a), y))
 }
 
 func (a Point) Floor() Point {
@@ -295,6 +304,23 @@ func (ps Points) FirstFurtherThan(dist float64, from Pointer) Point {
 		}
 	}
 	return 0
+}
+
+func (ps Points) Filter(filters ...Filter) Points {
+	if len(filters) == 0 {
+		return ps
+	}
+	res := Points{}
+NextPoint:
+	for _, p := range ps {
+		for _, filter := range filters {
+			if !filter(p) {
+				continue NextPoint
+			}
+		}
+		res = append(res, p)
+	}
+	return res
 }
 
 func (ls *Lines) Add(l ...Line) {
