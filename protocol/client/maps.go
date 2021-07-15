@@ -17,7 +17,7 @@ var Maps2021season1 = []string{
 	"Submarine506",
 }
 
-var MapsProBotsSeason2 = []string{
+var Maps2021season2 = []string{
 	"2000AtmospheresAIE",
 	"BlackburnAIE",
 	"JagannathaAIE",
@@ -33,7 +33,7 @@ func SetMap(name string) {
 
 // Random1v1Map returns a random map name from the current 1v1 ladder map pool.
 func Random1v1Map() string {
-	currentMaps := MapsProBotsSeason2
+	currentMaps := Maps2021season2
 
 	rand.Seed(time.Now().UnixNano())
 	return currentMaps[rand.Intn(len(currentMaps))] + ".SC2Map"

@@ -331,8 +331,8 @@ func NewCircle(x, y, r float64) *Circle {
 	return &Circle{Point(complex(x, y)), r}
 }
 
-func PtCircle(p *Point, r float64) *Circle {
-	return &Circle{*p, r}
+func PtCircle(p Point, r float64) *Circle {
+	return &Circle{p, r}
 }
 
 // Find the intersection of the two circles, the number of intersections may have 0, 1, 2

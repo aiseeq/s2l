@@ -303,12 +303,7 @@ func (b *Bot) ParseUnits() {
 	} else {
 		b.Groups.ClearUnits()
 	}
-	if b.Units.AllEnemy == nil {
-		b.Units.AllEnemy = UnitsByTypes{}
-	}
-	oldEnemyUnits := b.Units.AllEnemy.All()
 	b.Units.AllEnemy = UnitsByTypes{}
-	visibleTags := map[api.UnitTag]bool{}
 
 	for _, unit := range b.Obs.RawData.Units {
 		u, isNew := b.NewUnit(unit)
@@ -323,12 +318,11 @@ func (b *Bot) ParseUnits() {
 		case api.Alliance_Enemy:
 			b.Units.Enemy.Add(unit.UnitType, u)
 			b.Units.AllEnemy.Add(unit.UnitType, u)
-			visibleTags[u.Tag] = true
 			b.EnemyProduction.Add(unit.UnitType, unit.Tag) // Used to count score to decide what unit to build
 		case api.Alliance_Neutral:
 			if u.IsMineral() {
 				b.Units.Minerals.Add(unit.UnitType, u)
-			} else if u.IsGeyser() { // todo: filter empty
+			} else if u.IsGeyser() {
 				b.Units.Geysers.Add(unit.UnitType, u)
 			} else {
 				b.Units.Neutral.Add(unit.UnitType, u)
@@ -418,7 +412,10 @@ func (b *Bot) ParseUnits() {
 	b.Grid.Unlock()
 	b.ReaperExists = b.Units.My[terran.Reaper].Exists()
 
-	for _, u := range oldEnemyUnits {
+	for _, u := range b.Enemies.All { // old enemy units
+		if b.Units.ByTag[u.Tag] != nil {
+			continue // Unit already added
+		}
 		visible := true
 		h := b.Grid.HeightAt(u)
 		// Iterate unit's position and points around it
@@ -428,18 +425,17 @@ func (b *Bot) ParseUnits() {
 				break
 			}
 		}
-		// If unit already added or it's old position is scouted, skip it
-		if visibleTags[u.Tag] || visible {
-			continue
+		if visible {
+			continue // Old position is scouted, but there is no unit, skip it
 		}
 		u.DisplayType = api.DisplayType_Snapshot
 		b.Units.AllEnemy.Add(u.UnitType, u)
 	}
 
-	b.Units.MyAll = B.Units.My.All()
-	b.Enemies.All = b.Units.AllEnemy.All()
-	b.Enemies.AllReady = b.Enemies.All.Filter(Ready)
-	b.Enemies.Visible = b.Units.Enemy.All()
+	b.Units.MyAll = B.Units.My.All()                 // All my units
+	b.Enemies.All = b.Units.AllEnemy.All()           // All enemy units including those that are not visible now
+	b.Enemies.AllReady = b.Enemies.All.Filter(Ready) // Same but filter ready only
+	b.Enemies.Visible = b.Units.Enemy.All()          // All enemy units that are currently visible
 
 	b.RequestAvailableAbilities(false, b.Units.MyAll...)
 	b.RequestAvailableAbilities(true, b.Units.MyAll...)
@@ -470,7 +466,7 @@ func (b *Bot) ParseObservation() {
 		}
 	}
 	b.RecentEffects = append(b.RecentEffects, B.Obs.RawData.Effects) // Fixes corosive biles early disappearence
-	if len(b.RecentEffects) > 7 {                                    // 21 frames
+	if len(b.RecentEffects) > 21/b.FramesPerOrder {                  // 21 frames
 		b.RecentEffects = b.RecentEffects[1:]
 	}
 }
@@ -507,19 +503,17 @@ func (b *Bot) RequestAvailableAbilities(irr bool, us ...*Unit) {
 		log.Error(err)
 		return
 	}
-	amap := map[api.UnitTag][]api.AbilityID{}
 	for _, rqaa := range resp.Abilities {
 		for _, aa := range rqaa.Abilities {
-			as := amap[rqaa.UnitTag]
-			as = append(as, aa.AbilityId)
-			amap[rqaa.UnitTag] = as
-		}
-	}
-	for _, u := range us {
-		if irr {
-			u.IrrAbilities = amap[u.Tag]
-		} else {
-			u.Abilities = amap[u.Tag]
+			if u := b.Units.ByTag[rqaa.UnitTag]; u == nil {
+				log.Warning("Wat?")
+			} else {
+				if irr {
+					u.IrrAbilities = append(u.IrrAbilities, aa.AbilityId)
+				} else {
+					u.Abilities = append(u.Abilities, aa.AbilityId)
+				}
+			}
 		}
 	}
 }

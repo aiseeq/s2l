@@ -151,7 +151,7 @@ func (b *Bot) InitUpgrades(upgradeData []*api.UpgradeData) {
 			Time:     int(ud.ResearchTime),
 		}
 		b.U.AbilityCost[ud.AbilityId] = cost
-		// api bug workaroubd: TerranVehicleArmorsLevel1 -> Research_TerranVehicleAndShipPlatingLevel1
+		// api bug workaround: TerranVehicleArmorsLevel1 -> Research_TerranVehicleAndShipPlatingLevel1
 		if ud.AbilityId == 852 {
 			b.U.AbilityCost[864] = cost
 		}

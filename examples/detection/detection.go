@@ -24,7 +24,9 @@ func Step() {
 	B.ParseUnits()
 	B.ParseOrders()
 
-	log.Info(B.Units.Enemy.All())
+	if B.Units.Enemy[protoss.Zealot].Exists() {
+		log.Info(B.Units.Enemy[protoss.Zealot][0].AttackUpgradeLevel)
+	}
 }
 
 func AddDebug() {
