@@ -363,3 +363,24 @@ func Intersect(a *Circle, b *Circle) (ps Points) {
 	}
 	return
 }
+
+// Coordinates of rectangle that fits all points
+func (ps Points) Rect() Points {
+	min := Pt(math.MaxFloat64, math.MaxFloat64)
+	max := Pt(-math.MaxFloat64, -math.MaxFloat64)
+	for _, p := range ps {
+		if p.X() < min.X() {
+			min = Pt(p.X(), min.Y())
+		}
+		if p.Y() < min.Y() {
+			min = Pt(min.X(), p.Y())
+		}
+		if p.X() > max.X() {
+			max = Pt(p.X(), max.Y())
+		}
+		if p.Y() > max.Y() {
+			max = Pt(max.X(), p.Y())
+		}
+	}
+	return Points{min, max}
+}

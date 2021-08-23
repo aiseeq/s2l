@@ -232,6 +232,10 @@ func (b *Bot) MicroMinerals(miners, ccs, enemies Units, safePos point.Pointer, t
 			miner.CommandTag(ability.Smart, mfTag) // To mine designated mineral
 			continue
 		}
+		if len(miner.Orders) == 1 && miner.Orders[0].Progress == -1 {
+			// Hotfix for B.FramesPerOrder == 1, don't repeat last order again, todo: better?
+			continue
+		}
 		if !miner.IsReturning() && len(miner.Orders) < 2 &&
 			miner.IsFurtherThan(0.75, target) && miner.IsCloserThan(2, target) {
 			miner.CommandPos(ability.Move_Move, target)

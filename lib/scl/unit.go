@@ -16,6 +16,7 @@ import (
 type Unit struct {
 	api.Unit
 	SpamCmds     bool
+	CmdSet       bool
 	HPS          float64
 	Hits         float64
 	HitsMax      float64
@@ -181,8 +182,9 @@ func (b *Bot) NewUnit(unit *api.Unit) (*Unit, bool) {
 
 	// Check saved orders, because order itself is not in observation yet if B.FramesPerOrder not passed
 	order, ok := b.U.UnitsOrders[u.Tag]
-	if ok && order.Loop+B.FramesPerOrder > B.Loop {
-		uo := api.UnitOrder{AbilityId: order.Ability}
+	// If B.FramesPerOrder == 1, game takes order only on second frame
+	if ok && (order.Loop+B.FramesPerOrder > B.Loop || (B.FramesPerOrder == 1 && order.Loop+1 == B.Loop)) {
+		uo := api.UnitOrder{AbilityId: order.Ability, Progress: -1} // Progress == -1 means that order is from my DB
 		if order.Pos != 0 {
 			uo.Target = &api.UnitOrder_TargetWorldSpacePos{TargetWorldSpacePos: order.Pos.To3D()}
 		}
@@ -569,6 +571,7 @@ func (u *Unit) AssessStrength(attackers Units) (outranged, stronger bool) {
 	return
 }
 
+// these two functions are bad because they consider only one unit to evade. Todo: rewrite
 func (u *Unit) AirEvade(enemies Units, gap float64, ptr point.Pointer) (point.Point, bool) { // bool = is safe
 	pos := ptr.Point()
 	if enemies.Empty() {
@@ -988,6 +991,7 @@ func (u *Unit) IsSafeToApproach(p point.Pointer) bool {
 func Idle(u *Unit) bool         { return u.IsIdle() }
 func Unused(u *Unit) bool       { return u.IsUnused() }
 func Ready(u *Unit) bool        { return u.IsReady() || u.Cloak == api.CloakState_Cloaked }
+func NotReady(u *Unit) bool     { return !u.IsReady() && u.Cloak != api.CloakState_Cloaked }
 func Gathering(u *Unit) bool    { return u.IsGathering() }
 func Visible(u *Unit) bool      { return u.IsVisible() }
 func PosVisible(u *Unit) bool   { return u.IsPosVisible() }

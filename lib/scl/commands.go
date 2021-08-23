@@ -15,6 +15,17 @@ type CommandsStack struct {
 	TagQueue    map[api.AbilityID]map[api.UnitTag]Units
 }
 
+func FilterCmdSetAndSetItForTheRest(us Units) Units {
+	units := Units{}
+	for _, unit := range us {
+		if !unit.CmdSet {
+			unit.CmdSet = true
+			units.Add(unit)
+		}
+	}
+	return units
+}
+
 func (cs *CommandsStack) AddSimple(a api.AbilityID, queue bool, u ...*Unit) {
 	if queue {
 		if cs.SimpleQueue == nil {
@@ -24,6 +35,7 @@ func (cs *CommandsStack) AddSimple(a api.AbilityID, queue bool, u ...*Unit) {
 		c = append(c, u...)
 		cs.SimpleQueue[a] = c
 	} else {
+		u = FilterCmdSetAndSetItForTheRest(u)
 		if cs.Simple == nil {
 			cs.Simple = map[api.AbilityID]Units{}
 		}
@@ -49,6 +61,7 @@ func (cs *CommandsStack) AddPos(a api.AbilityID, p point.Point, queue bool, u ..
 
 		cs.PosQueue[a] = c
 	} else {
+		u = FilterCmdSetAndSetItForTheRest(u)
 		if cs.Pos == nil {
 			cs.Pos = map[api.AbilityID]map[point.Point]Units{}
 		}
@@ -81,6 +94,7 @@ func (cs *CommandsStack) AddTag(a api.AbilityID, t api.UnitTag, queue bool, u ..
 
 		cs.TagQueue[a] = c
 	} else {
+		u = FilterCmdSetAndSetItForTheRest(u)
 		if cs.Tag == nil {
 			cs.Tag = map[api.AbilityID]map[api.UnitTag]Units{}
 		}

@@ -244,7 +244,7 @@ func (us Units) Center() point.Point {
 }
 
 // Coordinates of rectangle that fits all units
-func (us Units) Rekt() point.Points {
+func (us Units) Rect() point.Points {
 	min := point.Pt(math.MaxFloat64, math.MaxFloat64)
 	max := point.Pt(-math.MaxFloat64, -math.MaxFloat64)
 	for _, unit := range us {
